@@ -1,4 +1,4 @@
-module GameLogic where
+module GameLogic (esMovimientoValido, moverBola, estaResuelto) where
 
 import GameTypes
 
@@ -6,13 +6,13 @@ tamanoTubo :: Int
 tamanoTubo = 4 -- Tamaño máximo de bolas en un tubo
 
 obtenerTubo :: EstadoJuego -> Int -> Maybe Tubo
-obtenerTubo estado indice
-    | indice < 0 || indice >= length estado = Nothing
-    | otherwise = Just (estado !! indice)
+obtenerTubo tablero indice
+    | indice < 0 || indice >= length tablero = Nothing
+    | otherwise = Just (tablero !! indice)
 
 esMovimientoValido :: EstadoJuego -> Int -> Int -> Bool
-esMovimientoValido estado origen destino =
-    case (obtenerTubo estado origen, obtenerTubo estado destino) of
+esMovimientoValido tablero origen destino =
+    case (obtenerTubo tablero origen, obtenerTubo tablero destino) of
         (Just tuboOrigen, Just tuboDestino) ->
             reglasValidas tuboOrigen tuboDestino
         _ ->
@@ -29,15 +29,15 @@ reglasValidas tuboOrigen tuboDestino
 -- Ejecuta el movimiento, devolviendo el nuevo estado del juego
 -- Se asume que el movimiento es válido
 moverBola :: EstadoJuego -> Int -> Int -> EstadoJuego
-moverBola estado origen destino =
+moverBola tablero origen destino =
     let
         -- Sacar la bola del tubo de origen
-        tuboOrigen = estado !! origen
+        tuboOrigen = tablero !! origen
         bolaAMover = head tuboOrigen
         nuevoTuboOrigen = tail tuboOrigen
 
         -- Agregar la bola al tubo de destino
-        tuboDestino = estado !! destino
+        tuboDestino = tablero !! destino
         nuevoTuboDestino = bolaAMover : tuboDestino
 
         -- Actualizar el estado del juego
@@ -47,19 +47,19 @@ moverBola estado origen destino =
             take idx lista ++ [nuevoElemento] ++ drop (idx + 1) lista
 
         -- Reemplaza primero el tubo de origen y luego el de destino
-        estadoIntermedio = actualizarLista origen nuevoTuboOrigen estado
+        estadoIntermedio = actualizarLista origen nuevoTuboOrigen tablero
         estadoFinal = actualizarLista destino nuevoTuboDestino estadoIntermedio
     in
         estadoFinal
 
 esTuboResuelto :: Tubo -> Bool
-esTuboResuleto tubo
+esTuboResuelto tubo
     | null tubo = True -- Un tubo vacío se considera resuelto
     | length tubo < tamanoTubo = False -- Un tubo no lleno no está resuelto
     | otherwise =
-        let
-            color = head tubo
-        in all (== color) tubo
+        case tubo of
+            (primero:resto) -> all (== primero) resto
+            []              -> True
 
 estaResuelto :: EstadoJuego -> Bool
 estaResuelto estado =

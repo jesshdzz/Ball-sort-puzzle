@@ -13,13 +13,13 @@ main = do
     -- Leer la entrada JSON desde stdin
     input <- B.getContents
     -- Decodificar la entrada JSON a una Peticion
-    let peticion = decode input :: Maybe Peticion
+    let posiblePeticion = decode input :: Maybe Peticion
 
-    case peticion of
+    case posiblePeticion of
         Nothing -> do
             -- Si la decodificación falla, responder con un error
             let errorResp = Respuesta Nothing "Error: JSON inválido" False
-            B.putStrLn (encode respuesta)
+            B.putStrLn (encode errorResp)
         Just peticion -> do
             procesarPeticion peticion
 
@@ -38,10 +38,10 @@ manejarMovimiento p = do
 
     if esMovimientoValido estadoActual desde hacia
         then do
-            let nuevoEstado = moverBola estadoActual desde hacia
-                victoria = estaResuelto nuevoEstado
+            let estadoNuevo = moverBola estadoActual desde hacia
+                victoria = estaResuelto estadoNuevo
                 msg = if victoria then "Ganaste!" else "OK"
-                resp = Respuesta (Just nuevoEstado) msg victoria
+                resp = Respuesta (Just estadoNuevo) msg victoria
             B.putStrLn (encode resp)
         else do
             -- movimiento inválido
