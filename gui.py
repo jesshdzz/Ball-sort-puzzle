@@ -5,109 +5,13 @@ import subprocess
 import random
 import math
 
-# --- CONFIGURACIÓN VISUAL ---
-ANCHO_PANTALLA = 900
-ALTO_PANTALLA = 700
-COLOR_FONDO = (20, 25, 40)  # Azul noche oscuro
-COLOR_TUBO = (200, 200, 220)
-COLOR_TUBO_SELECCION = (100, 255, 100)  # Verde neón
-COLOR_TEXTO = (255, 255, 255)
+# --- CONFIGURACIÓN INICIAL DE LA VENTANA ---
+# La ventana ahora es REAJUSTABLE
+ANCHO_INICIAL = 1280
+ALTO_INICIAL = 720
 
-# Paleta de colores bonita para las bolas
-PALETA_BOLAS = {
-    "Rojo": (255, 89, 94),  # Red
-    "Verde": (138, 201, 38),  # Green
-    "Azul": (25, 130, 196),  # Blue
-    "Amarillo": (255, 202, 58),  # Yellow
-    "Morado": (106, 76, 147),  # Purple
-    "Naranja": (251, 133, 0),  # Orange
-    "Cyan": (76, 201, 240),  # Cyan
-    "Rosa": (255, 0, 110),  # Pink
-}
-
-# Geometría
-ANCHO_TUBO = 70
-ALTO_TUBO = 300
-RADIO_BOLA = 30
-ESPACIO_ENTRE_TUBOS = 50
-MARGEN_SUPERIOR = 200
-
+# --- EL PUENTE (SIN CAMBIOS) ---
 EXE_HASKELL = "./ball-sort-puzzle-exe"
-
-# --- NIVELES DE DIFICULTAD ---
-# (Colores, Tubos Vacíos Extra)
-DIFICULTADES = {
-    "FACIL": (3, 2),  # 3 colores, 2 vacíos (Total 5 tubos)
-    "NORMAL": (4, 2),  # 4 colores, 2 vacíos (Total 6 tubos)
-    "DIFICIL": (5, 2),  # 5 colores, 2 vacíos (Total 7 tubos)
-    "SUPER DIFICIL": (6, 2),  # 6 colores, 2 vacíos (Total 8 tubos)
-    "IMPOSIBLE": (8, 2),  # 8 colores, 2 vacíos (Total 10 tubos)
-}
-
-# --- CLASES ---
-
-
-class AnimacionBola:
-    def __init__(self, color, inicio_pos, fin_pos, velocidad=15):
-        self.color = color
-        self.x, self.y = inicio_pos
-        self.dest_x, self.dest_y = fin_pos
-        self.velocidad = velocidad
-        self.terminada = False
-
-        # Calcular vector de dirección
-        dx = self.dest_x - self.x
-        dy = self.dest_y - self.y
-        distancia = math.sqrt(dx**2 + dy**2)
-        self.vx = (dx / distancia) * velocidad
-        self.vy = (dy / distancia) * velocidad
-        self.distancia_total = distancia
-        self.distancia_recorrida = 0
-
-    def actualizar(self):
-        self.x += self.vx
-        self.y += self.vy
-        self.distancia_recorrida += self.velocidad
-
-        if self.distancia_recorrida >= self.distancia_total:
-            self.x = self.dest_x
-            self.y = self.dest_y
-            self.terminada = True
-
-    def dibujar(self, pantalla):
-        pygame.draw.circle(
-            pantalla,
-            PALETA_BOLAS.get(self.color, (255, 255, 255)),
-            (int(self.x), int(self.y)),
-            RADIO_BOLA,
-        )
-
-
-# --- FUNCIONES DE APOYO ---
-
-
-def generar_nivel(dificultad_key):
-    num_colores, tubos_vacios = DIFICULTADES[dificultad_key]
-    nombres_colores = list(PALETA_BOLAS.keys())[:num_colores]
-
-    # Crear todas las bolas necesarias (4 de cada color)
-    todas_bolas = []
-    for color in nombres_colores:
-        todas_bolas.extend([color] * 4)
-
-    random.shuffle(todas_bolas)
-
-    # Repartir en tubos
-    tubos = []
-    for i in range(num_colores):
-        inicio = i * 4
-        tubos.append(todas_bolas[inicio : inicio + 4])
-
-    # Añadir tubos vacíos
-    for _ in range(tubos_vacios):
-        tubos.append([])
-
-    return tubos
 
 
 def llamar_haskell(payload):
@@ -123,364 +27,392 @@ def llamar_haskell(payload):
         return None
 
 
-def calcular_posicion_bola(idx_tubo, altura_en_tubo, num_tubos):
-    ancho_total = (num_tubos * ANCHO_TUBO) + ((num_tubos - 1) * ESPACIO_ENTRE_TUBOS)
-    margen_izquierdo = (ANCHO_PANTALLA - ancho_total) // 2
+# --- PALETA DE COLORES MODERNA ---
+COLORES = {
+    "FONDO": (20, 25, 40),  # Azul noche
+    "TEXTO": (230, 230, 255),
+    "TEXTO_TITULO": (100, 200, 255),
+    "TEXTO_BOTON": (255, 255, 255),
+    "BOTON_NORMAL": (40, 50, 80),
+    "BOTON_HOVER": (70, 80, 110),
+    "TUBO_VACIO": (30, 35, 50, 150),  # Semi-transparente
+    "TUBO_BORDE": (200, 200, 220, 180),
+    "TUBO_SELECCION": (100, 255, 100),  # Verde neón
+    "SOMBRA_BOLA": (0, 0, 0, 50),
+    "PALETA_BOLAS": {
+        "Rojo": (255, 89, 94),
+        "Verde": (138, 201, 38),
+        "Azul": (25, 130, 196),
+        "Amarillo": (255, 202, 58),
+        "Morado": (106, 76, 147),
+        "Naranja": (251, 133, 0),
+        "Cyan": (76, 201, 240),
+        "Rosa": (255, 0, 110),
+    },
+}
 
+# --- NIVELES DE DIFICULTAD (SIN CAMBIOS) ---
+DIFICULTADES = {
+    "FACIL": (3, 2),
+    "NORMAL": (4, 2),
+    "DIFICIL": (5, 2),
+    "SUPER DIFICIL": (6, 2),
+    "IMPOSIBLE": (8, 2),
+}
+
+
+# --- CLASE BOTÓN RESPONSIVO ---
+# Esta clase crea un botón que se ajusta al tamaño de su texto
+class Boton:
+    def __init__(self, texto, fuente, padding_x=30, padding_y=15):
+        self.texto = texto
+        self.fuente = fuente
+        self.padding_x = padding_x
+        self.padding_y = padding_y
+        self.texto_render = self.fuente.render(self.texto, True, COLORES["TEXTO_BOTON"])
+
+        # El tamaño se calcula dinámicamente
+        ancho = self.texto_render.get_width() + self.padding_x * 2
+        alto = self.texto_render.get_height() + self.padding_y * 2
+        self.rect = pygame.Rect(0, 0, ancho, alto)
+        self.hover = False
+
+    def dibujar(self, pantalla, x_centro, y_centro):
+        self.rect.center = (x_centro, y_centro)
+
+        # Detección de hover
+        self.hover = self.rect.collidepoint(pygame.mouse.get_pos())
+        color_fondo = COLORES["BOTON_HOVER"] if self.hover else COLORES["BOTON_NORMAL"]
+
+        pygame.draw.rect(pantalla, color_fondo, self.rect, border_radius=10)
+        # Borde sutil
+        pygame.draw.rect(
+            pantalla, COLORES["TEXTO_TITULO"], self.rect, width=2, border_radius=10
+        )
+
+        # Texto centrado dentro del botón
+        pantalla.blit(
+            self.texto_render,
+            (
+                self.rect.centerx - self.texto_render.get_width() // 2,
+                self.rect.centery - self.texto_render.get_height() // 2,
+            ),
+        )
+
+    def es_clic(self, pos_mouse):
+        return self.rect.collidepoint(pos_mouse)
+
+
+def lerp(a, b, t):
+    """Interpolación lineal simple"""
+    return a + (b - a) * t
+
+
+# --- CLASE DE ANIMACIÓN MEJORADA (CON PARÁBOLA) ---
+class AnimacionBola:
+    def __init__(self, color, pos_ini, pos_fin, duracion_seg=0.4):
+        self.color = color
+        self.pos_ini = pos_ini
+        self.pos_fin = pos_fin
+        self.duracion = duracion_seg
+        self.t = 0.0  # Tiempo de animación (0.0 a 1.0)
+        self.terminada = False
+
+        # Altura del arco (en píxeles, sobre el punto más alto)
+        self.altura_arco = max(100, abs(pos_ini[0] - pos_fin[0]) * 0.3)
+
+    def actualizar(self, dt):  # dt = delta_time en segundos
+        self.t += dt / self.duracion
+        if self.t >= 1.0:
+            self.t = 1.0
+            self.terminada = True
+
+    def get_posicion(self):
+        # Interpolación lineal (lerp) para X
+        x = lerp(self.pos_ini[0], self.pos_fin[0], self.t)
+
+        # Interpolación lineal para Y...
+        y_lineal = lerp(self.pos_ini[1], self.pos_fin[1], self.t)
+        # ...más una parábola que es 0 en t=0 y t=1
+        # La fórmula 4*t*(1-t) da una curva parabólica perfecta entre 0 y 1
+        curva_y = self.altura_arco * (4 * self.t * (1 - self.t))
+
+        y = y_lineal - curva_y
+        return (int(x), int(y))
+
+    def dibujar(self, pantalla, radio_bola):
+        x, y = self.get_posicion()
+        color_rgb = COLORES["PALETA_BOLAS"].get(self.color, (255, 255, 255))
+
+        # Sombra
+        pygame.draw.circle(pantalla, COLORES["SOMBRA_BOLA"], (x + 3, y + 3), radio_bola)
+        # Bola
+        pygame.draw.circle(pantalla, color_rgb, (x, y), radio_bola)
+
+
+# --- FUNCIONES AUXILIARES ---
+
+
+def generar_nivel(dificultad_key):
+    num_colores, tubos_vacios = DIFICULTADES[dificultad_key]
+    nombres_colores = list(COLORES["PALETA_BOLAS"].keys())[:num_colores]
+    todas_bolas = [color for color in nombres_colores for _ in range(4)]
+    random.shuffle(todas_bolas)
+    tubos = [todas_bolas[i * 4 : (i + 1) * 4] for i in range(num_colores)]
+    tubos.extend([[] for _ in range(tubos_vacios)])
+    return tubos
+
+
+def dibujar_texto_centrado(pantalla, texto, fuente, y, color=COLORES["TEXTO"]):
+    render = fuente.render(texto, True, color)
+    x = pantalla.get_width() // 2 - render.get_width() // 2
+    pantalla.blit(render, (x, y))
+
+
+# --- CÁLCULO DE GEOMETRÍA DINÁMICO ---
+# Esta es la clave para la responsividad
+def calcular_geometria(pantalla, num_tubos):
+    ancho_pantalla = pantalla.get_width()
+    alto_pantalla = pantalla.get_height()
+
+    # Tamaños base de los tubos (podrían escalar, pero es más fácil fijos)
+    ancho_tubo = 70
+    alto_tubo = 300
+    radio_bola = 30
+
+    # Ajustar espaciado si no caben
+    espacio_tubo = 50
+    ancho_total = (num_tubos * ancho_tubo) + ((num_tubos - 1) * espacio_tubo)
+
+    # Si se sale de la pantalla, reducimos el espaciado
+    if ancho_total > ancho_pantalla * 0.9:
+        espacio_tubo = (ancho_pantalla * 0.9 - (num_tubos * ancho_tubo)) / (
+            num_tubos - 1
+        )
+        ancho_total = ancho_pantalla * 0.9
+
+    # CENTRADO DINÁMICO
+    margen_izq = (ancho_pantalla - ancho_total) / 2
+    margen_sup = (alto_pantalla - alto_tubo) / 2  # Centrado vertical
+
+    return {
+        "ancho_tubo": ancho_tubo,
+        "alto_tubo": alto_tubo,
+        "radio_bola": radio_bola,
+        "espacio_tubo": espacio_tubo,
+        "margen_izq": margen_izq,
+        "margen_sup": margen_sup,
+    }
+
+
+def get_pos_bola(geo, i_tubo, k_altura):
+    # k_altura: 0 = fondo, 3 = tope
     x = (
-        margen_izquierdo
-        + (idx_tubo * (ANCHO_TUBO + ESPACIO_ENTRE_TUBOS))
-        + (ANCHO_TUBO // 2)
+        geo["margen_izq"]
+        + (i_tubo * (geo["ancho_tubo"] + geo["espacio_tubo"]))
+        + (geo["ancho_tubo"] / 2)
     )
+    y_base_tubo = (
+        geo["margen_sup"] + geo["alto_tubo"] - (geo["radio_bola"] + 10)
+    )  # 10px padding fondo
+    y = y_base_tubo - (k_altura * (geo["radio_bola"] * 2))
+    return (int(x), int(y))
 
-    # Altura en tubo: 0 es fondo, 3 es tope.
-    # Dibujamos desde abajo: Y_BASE - (altura * diametro) - radio
-    y = (
-        (MARGEN_SUPERIOR + ALTO_TUBO)
-        - (altura_en_tubo * (RADIO_BOLA * 2))
-        - RADIO_BOLA
-        - 10
-    )
-    return (x, y)
+
+def get_tubo_clic(geo, pos_mouse, num_tubos):
+    for i in range(num_tubos):
+        x_tubo = geo["margen_izq"] + (i * (geo["ancho_tubo"] + geo["espacio_tubo"]))
+        y_tubo = geo["margen_sup"]
+        rect_tubo = pygame.Rect(x_tubo, y_tubo, geo["ancho_tubo"], geo["alto_tubo"])
+        if rect_tubo.collidepoint(pos_mouse):
+            return i
+    return None
 
 
 # --- PANTALLAS ---
 
 
-def dibujar_menu(pantalla, fuente_titulo, fuente_btn):
-    pantalla.fill(COLOR_FONDO)
+def dibujar_menu(pantalla, botones_menu, fuentes):
+    pantalla.fill(COLORES["FONDO"])
+    dibujar_texto_centrado(
+        pantalla, "BALL SORT PUZZLE", fuentes["titulo"], 100, COLORES["TEXTO_TITULO"]
+    )
+    dibujar_texto_centrado(
+        pantalla, "(Haskell Core + Python UI)", fuentes["subtitulo"], 180
+    )
 
-    # Título con sombra
-    titulo = fuente_titulo.render("BALL SORT PUZZLE", True, (100, 200, 255))
-    pantalla.blit(titulo, (ANCHO_PANTALLA // 2 - titulo.get_width() // 2, 100))
-
-    botones = []
-    y_base = 250
-
-    for i, dif in enumerate(DIFICULTADES.keys()):
-        rect = pygame.Rect(ANCHO_PANTALLA // 2 - 150, y_base + (i * 70), 300, 50)
-        color_btn = (50, 60, 80)
-
-        # Efecto hover simple
-        if rect.collidepoint(pygame.mouse.get_pos()):
-            color_btn = (70, 80, 110)
-
-        pygame.draw.rect(pantalla, color_btn, rect, border_radius=10)
-        pygame.draw.rect(pantalla, (100, 200, 255), rect, width=2, border_radius=10)
-
-        texto = fuente_btn.render(dif, True, COLOR_TEXTO)
-        pantalla.blit(
-            texto,
-            (
-                rect.centerx - texto.get_width() // 2,
-                rect.centery - texto.get_height() // 2,
-            ),
-        )
-
-        botones.append((rect, dif))
-
-    return botones
+    y_base = 300
+    for i, (key, boton) in enumerate(botones_menu.items()):
+        boton.dibujar(pantalla, pantalla.get_width() // 2, y_base + i * 80)
 
 
-def dibujar_juego(pantalla, estado, seleccionado, animaciones):
-    pantalla.fill(COLOR_FONDO)
-    num_tubos = len(estado)
-    ancho_total = (num_tubos * ANCHO_TUBO) + ((num_tubos - 1) * ESPACIO_ENTRE_TUBOS)
-    margen_izq = (ANCHO_PANTALLA - ancho_total) // 2
+def dibujar_juego(
+    pantalla, estado, seleccionado, animaciones, geo, btn_resolver, btn_menu, mensaje
+):
+    pantalla.fill(COLORES["FONDO"])
 
-    # Dibujar tubos y bolas estáticas
+    # Dibujar botones
+    btn_resolver.dibujar(pantalla, pantalla.get_width() - 120, 50)
+    btn_menu.dibujar(pantalla, 120, 50)
+
+    # Dibujar mensaje de estado
+    if mensaje:
+        dibujar_texto_centrado(pantalla, mensaje, fuentes["normal"], 30)
+
     for i, tubo in enumerate(estado):
-        x = margen_izq + (i * (ANCHO_TUBO + ESPACIO_ENTRE_TUBOS))
-        y = MARGEN_SUPERIOR
+        x = geo["margen_izq"] + (i * (geo["ancho_tubo"] + geo["espacio_tubo"]))
 
-        color_borde = COLOR_TUBO_SELECCION if i == seleccionado else COLOR_TUBO
+        # Animación de "pop-up" al seleccionar
+        y_base = geo["margen_sup"]
+        y_pos = y_base - 30 if i == seleccionado else y_base
 
-        # Tubo (Cuerpo)
-        rect_tubo = pygame.Rect(x, y, ANCHO_TUBO, ALTO_TUBO)
+        rect_tubo = pygame.Rect(x, y_pos, geo["ancho_tubo"], geo["alto_tubo"])
+
+        # Tubo (hecho con Surface para transparencia)
+        tubo_surf = pygame.Surface(
+            (geo["ancho_tubo"], geo["alto_tubo"]), pygame.SRCALPHA
+        )
         pygame.draw.rect(
-            pantalla,
-            (30, 35, 50),
-            rect_tubo,
-            border_radius=0,
-            border_bottom_left_radius=20,
-            border_bottom_right_radius=20,
+            tubo_surf,
+            COLORES["TUBO_VACIO"],
+            (0, 0, geo["ancho_tubo"], geo["alto_tubo"]),
+            border_radius=15,
         )
 
         # Bordes
-        pygame.draw.line(
-            pantalla, color_borde, (x, y), (x, y + ALTO_TUBO - 20), 4
-        )  # Izq
-        pygame.draw.line(
-            pantalla,
+        color_borde = (
+            COLORES["TUBO_SELECCION"] if i == seleccionado else COLORES["TUBO_BORDE"]
+        )
+        pygame.draw.rect(
+            tubo_surf,
             color_borde,
-            (x + ANCHO_TUBO, y),
-            (x + ANCHO_TUBO, y + ALTO_TUBO - 20),
-            4,
-        )  # Der
-        # Curva abajo (simulada con arco o líneas)
-        pygame.draw.line(
-            pantalla,
-            color_borde,
-            (x, y + ALTO_TUBO),
-            (x + ANCHO_TUBO, y + ALTO_TUBO),
-            4,
-        )  # Base simple por ahora
+            (0, 0, geo["ancho_tubo"], geo["alto_tubo"]),
+            width=4,
+            border_radius=15,
+        )
+
+        pantalla.blit(tubo_surf, (x, y_pos))
 
         # Bolas estáticas
-        # Invertimos para dibujar desde el fondo (0 es fondo)
-        # tubo_invertido = list(reversed(tubo))
-        # Pero ojo: mi función 'calcular_posicion_bola' usa índice desde el fondo (0 = fondo)
-        # En Haskell la lista es [Tope ... Fondo].
-        # Así que el elemento en index K de haskell, está a una altura (len - 1 - k)
-
         num_bolas = len(tubo)
-        for k, color in enumerate(tubo):
-            altura = num_bolas - 1 - k
-            cx, cy = calcular_posicion_bola(i, altura, num_tubos)
-            pygame.draw.circle(pantalla, PALETA_BOLAS[color], (cx, cy), RADIO_BOLA)
+        for k_haskell, color in enumerate(tubo):
+            k_altura = num_bolas - 1 - k_haskell  # 0 = fondo
+            cx, cy = get_pos_bola(geo, i, k_altura)
+            color_rgb = COLORES["PALETA_BOLAS"].get(color, (255, 255, 255))
+
+            # Sombra
+            pygame.draw.circle(
+                pantalla, COLORES["SOMBRA_BOLA"], (cx + 3, cy + 3), geo["radio_bola"]
+            )
+            # Bola
+            pygame.draw.circle(pantalla, color_rgb, (cx, cy), geo["radio_bola"])
 
     # Dibujar bolas animadas (encima de todo)
     for anim in animaciones:
-        anim.dibujar(pantalla)
+        anim.dibujar(pantalla, geo["radio_bola"])
 
 
-# --- MAIN LOOP ---
+def dibujar_victoria(pantalla, btn_menu_victoria, fuentes):
+    pantalla.fill(COLORES["FONDO"])
+    dibujar_texto_centrado(
+        pantalla,
+        "¡ N I V E L   C O M P L E T A D O !",
+        fuentes["titulo"],
+        200,
+        (100, 255, 100),
+    )
+    btn_menu_victoria.dibujar(pantalla, pantalla.get_width() // 2, 400)
+
+
+# --- BUCLE PRINCIPAL ---
 
 
 def main():
     pygame.init()
-    pantalla = pygame.display.set_mode((ANCHO_PANTALLA, ALTO_PANTALLA))
-    pygame.display.set_caption("Ball Sort - Haskell Core")
+    pygame.font.init()
+
+    # Permitir reajustar la ventana
+    pantalla = pygame.display.set_mode((ANCHO_INICIAL, ALTO_INICIAL), pygame.RESIZABLE)
+    pygame.display.set_caption("Ball Sort Puzzle - Haskell Core (Diseño Dinámico)")
     reloj = pygame.time.Clock()
 
-    fuente_titulo = pygame.font.SysFont("Arial", 60, bold=True)
-    fuente_btn = pygame.font.SysFont("Arial", 30)
+    # Fuentes
+    global fuentes  # Hacerlas globales para que las usen las funciones de dibujado
+    fuentes = {
+        "titulo": pygame.font.SysFont("Arial", 60, bold=True),
+        "subtitulo": pygame.font.SysFont("Arial", 24, italic=True),
+        "normal": pygame.font.SysFont("Arial", 24),
+        "boton": pygame.font.SysFont("Arial", 22, bold=True),
+    }
 
-    estado_app = "MENU"  # MENU, JUEGO, GANASTE
+    # Crear botones del menú
+    botones_menu = {key: Boton(key, fuentes["boton"]) for key in DIFICULTADES.keys()}
+
+    # Crear botones del juego
+    btn_resolver = Boton("Resolver IA", fuentes["boton"], padding_x=20, padding_y=10)
+    btn_menu = Boton("Volver al Menú", fuentes["boton"], padding_x=20, padding_y=10)
+    btn_menu_victoria = Boton("Menú Principal", fuentes["boton"])
+
+    estado_app = "MENU"
 
     # Variables de juego
     estado_juego = []
     seleccionado = None
-    animaciones = []  # Lista de objetos AnimacionBola
-    estado_futuro = None  # Para guardar el estado mientras animamos
+    animaciones = []
+    estado_futuro = None
+    victoria_pendiente = False
+    cola_solucion = []
     mensaje = ""
-    victoria = False
-    cola_solucion = []  # Lista de pasos para la solución automática
 
     corriendo = True
     while corriendo:
+        # dt = delta_time en segundos. Esencial para animaciones suaves.
+        dt = reloj.tick(60) / 1000.0
         pos_mouse = pygame.mouse.get_pos()
 
-        if estado_app == "MENU":
-            botones = dibujar_menu(pantalla, fuente_titulo, fuente_btn)
+        # --- MANEJO DE EVENTOS ---
+        eventos = pygame.event.get()
+        for evento in eventos:
+            if evento.type == pygame.QUIT:
+                corriendo = False
 
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
-                    corriendo = False
-                if evento.type == pygame.MOUSEBUTTONDOWN:
-                    for rect, dif in botones:
-                        if rect.collidepoint(pos_mouse):
-                            estado_juego = generar_nivel(dif)
+            # Re-dibujar si la ventana cambia de tamaño
+            if evento.type == pygame.VIDEORESIZE:
+                # El sistema maneja el reajuste, solo necesitamos redibujar
+                pass
+
+            if evento.type == pygame.MOUSEBUTTONDOWN:
+                if estado_app == "MENU":
+                    for key, boton in botones_menu.items():
+                        if boton.es_clic(pos_mouse):
+                            estado_juego = generar_nivel(key)
+                            # Resetear todo
                             seleccionado = None
                             animaciones = []
                             estado_futuro = None
-                            mensaje = ""
+                            victoria_pendiente = False
+                            cola_solucion = []
+                            mensaje = "¡Suerte!"
                             estado_app = "JUEGO"
 
-        elif estado_app == "JUEGO":
-            # Lógica de actualización de animaciones
-            if animaciones:
-                todas_terminadas = True
-                for anim in animaciones:
-                    anim.actualizar()
-                    if not anim.terminada:
-                        todas_terminadas = False
-
-                if todas_terminadas:
-                    animaciones = []
-                    estado_juego = estado_futuro
-                    estado_futuro = None
-
-                    if victoria:
-                        estado_app = "GANASTE"
-                        victoria = False
-            if cola_solucion and not animaciones:
-                proximo_paso = cola_solucion.pop(0)
-                origen, destino = proximo_paso
-
-                # Simular el clic para activar la lógica de movimiento/animación existente
-                # Llamamos a Haskell para confirmar el movimiento y obtener el estado futuro
-                peticion = {
-                    "accion": "mover",
-                    "estado": estado_juego,
-                    "indiceDesde": origen,
-                    "indiceHacia": destino,
-                }
-                res = llamar_haskell(peticion)
-
-                if res and res["nuevoEstado"]:
-                    # (COPIA AQUÍ LA LÓGICA DE ANIMACIÓN QUE YA TIENES EN EL EVENTO DE MOUSE)
-                    estado_futuro = res["nuevoEstado"]
-                    len_antes = len(estado_juego[origen])
-                    len_despues = len(estado_futuro[origen])
-                    num_bolas_movidas = len_antes - len_despues
-                    color_movido = estado_juego[origen][0]
-
-                    for k in range(num_bolas_movidas):
-                        pos_ini = calcular_posicion_bola(
-                            origen, len_antes - 1 - k, num_tubos
+                elif (
+                    estado_app == "JUEGO" and not animaciones
+                ):  # Bloquear clics si hay animación
+                    if btn_resolver.es_clic(pos_mouse):
+                        mensaje = "IA pensando... (puede tardar)"
+                        # Forzar redibujado del mensaje
+                        geo = calcular_geometria(pantalla, len(estado_juego))
+                        dibujar_juego(
+                            pantalla,
+                            estado_juego,
+                            seleccionado,
+                            animaciones,
+                            geo,
+                            btn_resolver,
+                            btn_menu,
+                            mensaje,
                         )
-                        len_dest_actual = len(estado_juego[destino])
-                        pos_fin = calcular_posicion_bola(
-                            destino, len_dest_actual + k, num_tubos
-                        )
-                        anim = AnimacionBola(
-                            color_movido, pos_ini, pos_fin, velocidad=25
-                        )  # Más rápido para el solver
-                        animaciones.append(anim)
-
-                    estado_juego[origen] = estado_juego[origen][num_bolas_movidas:]
-
-                    victoria_pendiente = res["esVictoria"]
-            # Dibujado
-            dibujar_juego(pantalla, estado_juego, seleccionado, animaciones)
-
-            # Mensajes
-            if mensaje:
-                txt = fuente_btn.render(mensaje, True, (200, 200, 200))
-                pantalla.blit(txt, (20, 20))
-
-            # Eventos
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
-                    corriendo = False
-
-                # Bloquear input si hay animaciones
-                if evento.type == pygame.MOUSEBUTTONDOWN and not animaciones:
-                    # Detectar clic en tubos
-                    num_tubos = len(estado_juego)
-                    ancho_total = (num_tubos * ANCHO_TUBO) + (
-                        (num_tubos - 1) * ESPACIO_ENTRE_TUBOS
-                    )
-                    margen_izq = (ANCHO_PANTALLA - ancho_total) // 2
-
-                    clic_en_tubo = None
-                    for i in range(num_tubos):
-                        x = margen_izq + (i * (ANCHO_TUBO + ESPACIO_ENTRE_TUBOS))
-                        if x <= pos_mouse[0] <= x + ANCHO_TUBO:
-                            if (
-                                MARGEN_SUPERIOR
-                                <= pos_mouse[1]
-                                <= MARGEN_SUPERIOR + ALTO_TUBO
-                            ):
-                                clic_en_tubo = i
-                                break
-
-                    if clic_en_tubo is not None:
-                        if seleccionado is None:
-                            if estado_juego[clic_en_tubo]:  # Si no está vacío
-                                seleccionado = clic_en_tubo
-                        else:
-                            origen = seleccionado
-                            destino = clic_en_tubo
-
-                            if origen == destino:
-                                seleccionado = None
-                            else:
-                                # --- LLAMADA A HASKELL ---
-                                peticion = {
-                                    "accion": "mover",
-                                    "estado": estado_juego,
-                                    "indiceDesde": origen,
-                                    "indiceHacia": destino,
-                                }
-                                res = llamar_haskell(peticion)
-
-                                if res and res["nuevoEstado"]:
-                                    # MOVIEMIENTO VALIDO: INICIAR ANIMACIÓN
-                                    estado_futuro = res["nuevoEstado"]
-
-                                    victoria = res["esVictoria"]
-
-                                    # Calcular cuántas bolas y de qué color se mueven
-                                    # Comparamos longitudes para saber cuantas salieron
-                                    len_antes = len(estado_juego[origen])
-                                    len_despues = len(estado_futuro[origen])
-                                    num_bolas_movidas = len_antes - len_despues
-                                    color_movido = estado_juego[origen][
-                                        0
-                                    ]  # La de arriba
-
-                                    # Crear animaciones para cada bola movida
-                                    for k in range(num_bolas_movidas):
-                                        # Posicion inicial: Tubo Origen, altura (len_antes - 1 - k)
-                                        pos_ini = calcular_posicion_bola(
-                                            origen, len_antes - 1 - k, num_tubos
-                                        )
-
-                                        # Posicion final: Tubo Destino, altura (len_destino_actual + k)
-                                        len_dest_actual = len(estado_juego[destino])
-                                        pos_fin = calcular_posicion_bola(
-                                            destino, len_dest_actual + k, num_tubos
-                                        )
-
-                                        anim = AnimacionBola(
-                                            color_movido, pos_ini, pos_fin
-                                        )
-                                        animaciones.append(anim)
-
-                                    # Eliminamos temporalmente las bolas del origen VISUALMENTE (hack visual)
-                                    # Para que no se dupliquen mientras viajan.
-                                    # Modificamos una copia temporal solo para dibujar el fondo?
-                                    # Nah, simplemente dibujamos las animaciones encima.
-                                    # Pero idealmente deberíamos quitar las bolas estáticas.
-                                    # Truco rapido: Actualizar estado_juego INMEDIATAMENTE en el origen
-                                    # pero NO en el destino hasta que termine la animacion?
-                                    # Mejor: Dejamos el estado como está, y pintamos un cuadrado del color de fondo
-                                    # sobre las bolas que se están moviendo en el origen :P
-                                    # O mejor: Simplemente actualizamos estado_juego a estado_futuro AL FINAL.
-                                    # (Se verán duplicadas por un milisegundo, pero con la velocidad no se nota mucho)
-
-                                    # REFINAMIENTO:
-                                    # Quitamos las bolas del origen en 'estado_juego' ahora mismo
-                                    # pero NO las ponemos en destino todavía.
-                                    estado_juego[origen] = estado_juego[origen][
-                                        num_bolas_movidas:
-                                    ]
-                                    # (Las bolas están ahora "en el aire" en la lista 'animaciones')
-
-                                    seleccionado = None
-                                    mensaje = ""
-                                else:
-                                    mensaje = "Movimiento invalido"
-                                    seleccionado = None
-            btn_resolver = pygame.React(ANCHO_PANTALLA - 160, 20, 140, 40)
-            # Solo dibujarlo si no hay animaciones activas
-            if not animaciones:
-                color_btn = (70, 130, 180)
-                if btn_resolver.collidepoint(pos_mouse):
-                    color_btn = (100, 160, 210)
-                pygame.draw.rect(pantalla, color_btn, btn_resolver, border_radius=5)
-                txt_res = fuente_btn.render("Resolver IA", True, COLOR_TEXTO)
-                pantalla.blit(
-                    txt_res,
-                    (
-                        btn_resolver.centerx - txt_res.get_width() // 2,
-                        btn_resolver.centery - txt_res.get_height() // 2,
-                    ),
-                )
-
-            # ... (dibujar_juego, mensajes, etc) ...
-
-            for evento in pygame.event.get():
-                # ... (QUIT y lógica de movimiento igual) ...
-
-                # LÓGICA DEL BOTÓN RESOLVER
-                if evento.type == pygame.MOUSEBUTTONDOWN and not animaciones:
-                    if btn_resolver.collidepoint(pos_mouse):
-                        mensaje = "Pensando..."
-                        dibujar_juego(pantalla, estado_juego, seleccionado, animaciones)
-                        pygame.display.flip()  # Forzar pintado del mensaje
+                        pygame.display.flip()
 
                         peticion = {
                             "accion": "resolver",
@@ -491,42 +423,155 @@ def main():
                         res = llamar_haskell(peticion)
 
                         if res and res.get("solucion"):
-                            pasos = res["solucion"]
-                            mensaje = f"Solución: {len(pasos)} pasos"
-
-                            # EJECUTAR LA SOLUCIÓN AUTOMÁTICAMENTE
-                            # Esto es un truco: Convertimos la lista de pasos en una cola de eventos
-                            # Pero para hacerlo simple, vamos a mover las bolas PASO A PASO en el loop.
-                            # Aquí guardamos la lista de pasos pendientes.
-                            cola_solucion = pasos
+                            cola_solucion = res["solucion"]
+                            mensaje = f"Solución encontrada: {len(cola_solucion)} pasos"
                         else:
-                            mensaje = "No encontré solución :("
+                            mensaje = "La IA no encontró solución"
 
-        elif estado_app == "GANASTE":
-            pantalla.fill(COLOR_FONDO)
-            txt = fuente_titulo.render("¡VICTORIA!", True, (100, 255, 100))
-            pantalla.blit(txt, (ANCHO_PANTALLA // 2 - txt.get_width() // 2, 200))
-
-            btn_menu = pygame.Rect(ANCHO_PANTALLA // 2 - 100, 400, 200, 50)
-            pygame.draw.rect(pantalla, (50, 60, 80), btn_menu, border_radius=10)
-            txt_btn = fuente_btn.render("Menú Principal", True, COLOR_TEXTO)
-            pantalla.blit(
-                txt_btn,
-                (
-                    btn_menu.centerx - txt_btn.get_width() // 2,
-                    btn_menu.centery - txt_btn.get_height() // 2,
-                ),
-            )
-
-            for evento in pygame.event.get():
-                if evento.type == pygame.QUIT:
-                    corriendo = False
-                if evento.type == pygame.MOUSEBUTTONDOWN:
-                    if btn_menu.collidepoint(pos_mouse):
+                    elif btn_menu.es_clic(pos_mouse):
                         estado_app = "MENU"
 
+                    else:
+                        geo = calcular_geometria(pantalla, len(estado_juego))
+                        clic_en_tubo = get_tubo_clic(geo, pos_mouse, len(estado_juego))
+
+                        if clic_en_tubo is not None:
+                            if seleccionado is None:
+                                if estado_juego[clic_en_tubo]:  # Si no está vacío
+                                    seleccionado = clic_en_tubo
+                                    mensaje = ""
+                            else:
+                                if seleccionado == clic_en_tubo:
+                                    seleccionado = None  # Cancelar
+                                else:
+                                    # --- LLAMADA A HASKELL ---
+                                    origen = seleccionado
+                                    destino = clic_en_tubo
+                                    peticion = {
+                                        "accion": "mover",
+                                        "estado": estado_juego,
+                                        "indiceDesde": origen,
+                                        "indiceHacia": destino,
+                                    }
+                                    res = llamar_haskell(peticion)
+
+                                    if res and res["nuevoEstado"]:
+                                        estado_futuro = res["nuevoEstado"]
+                                        victoria_pendiente = res["esVictoria"]
+
+                                        # Calcular bolas movidas para animar
+                                        len_antes = len(estado_juego[origen])
+                                        len_despues = len(estado_futuro[origen])
+                                        num_bolas_movidas = len_antes - len_despues
+                                        color_movido = estado_juego[origen][0]
+
+                                        # Quitar bolas del origen lógico INMEDIATAMENTE
+                                        estado_juego[origen] = estado_juego[origen][
+                                            num_bolas_movidas:
+                                        ]
+
+                                        # Crear animaciones
+                                        for k in range(num_bolas_movidas):
+                                            # Altura en origen (desde el fondo)
+                                            altura_ini = (
+                                                len_antes - num_bolas_movidas + k
+                                            )
+                                            pos_ini = get_pos_bola(
+                                                geo, origen, altura_ini
+                                            )
+
+                                            # Altura en destino (desde el fondo)
+                                            altura_fin = len(estado_juego[destino]) + k
+                                            pos_fin = get_pos_bola(
+                                                geo, destino, altura_fin
+                                            )
+
+                                            anim = AnimacionBola(
+                                                color_movido, pos_ini, pos_fin
+                                            )
+                                            animaciones.append(anim)
+
+                                        seleccionado = None
+                                    else:
+                                        mensaje = "Movimiento inválido"
+                                        seleccionado = None
+
+                elif estado_app == "GANASTE":
+                    if btn_menu_victoria.es_clic(pos_mouse):
+                        estado_app = "MENU"
+
+        # --- LÓGICA DE ACTUALIZACIÓN ---
+        if estado_app == "JUEGO":
+            # Ejecutar cola del solver si existe
+            if cola_solucion and not animaciones:
+                origen, destino = cola_solucion.pop(0)
+
+                # (Duplicamos la lógica de movimiento, idealmente iría en una función)
+                geo = calcular_geometria(pantalla, len(estado_juego))
+                peticion = {
+                    "accion": "mover",
+                    "estado": estado_juego,
+                    "indiceDesde": origen,
+                    "indiceHacia": destino,
+                }
+                res = llamar_haskell(peticion)
+
+                if res and res["nuevoEstado"]:
+                    estado_futuro = res["nuevoEstado"]
+                    victoria_pendiente = res["esVictoria"]
+                    len_antes = len(estado_juego[origen])
+                    len_despues = len(estado_futuro[origen])
+                    num_bolas_movidas = len_antes - len_despues
+                    color_movido = estado_juego[origen][0]
+                    estado_juego[origen] = estado_juego[origen][num_bolas_movidas:]
+
+                    for k in range(num_bolas_movidas):
+                        altura_ini = len_antes - num_bolas_movidas + k
+                        pos_ini = get_pos_bola(geo, origen, altura_ini)
+                        altura_fin = len(estado_juego[destino]) + k
+                        pos_fin = get_pos_bola(geo, destino, altura_fin)
+                        anim = AnimacionBola(
+                            color_movido, pos_ini, pos_fin, duracion_seg=0.25
+                        )  # Solver más rápido
+                        animaciones.append(anim)
+
+            # Actualizar animaciones existentes
+            if animaciones:
+                todas_terminadas = True
+                for anim in animaciones:
+                    anim.actualizar(dt)
+                    if not anim.terminada:
+                        todas_terminadas = False
+
+                if todas_terminadas:
+                    animaciones = []
+                    estado_juego = estado_futuro
+                    estado_futuro = None
+                    if victoria_pendiente:
+                        estado_app = "GANASTE"
+                        victoria_pendiente = False
+
+        # --- DIBUJADO ---
+        if estado_app == "MENU":
+            dibujar_menu(pantalla, botones_menu, fuentes)
+
+        elif estado_app == "JUEGO":
+            geo = calcular_geometria(pantalla, len(estado_juego))
+            dibujar_juego(
+                pantalla,
+                estado_juego,
+                seleccionado,
+                animaciones,
+                geo,
+                btn_resolver,
+                btn_menu,
+                mensaje,
+            )
+
+        elif estado_app == "GANASTE":
+            dibujar_victoria(pantalla, btn_menu_victoria, fuentes)
+
         pygame.display.flip()
-        reloj.tick(60)  # 60 FPS para animaciones fluidas
 
     pygame.quit()
     sys.exit()
