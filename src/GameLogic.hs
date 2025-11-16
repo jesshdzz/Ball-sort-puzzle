@@ -23,7 +23,7 @@ reglasValidas tuboOrigen tuboDestino
     | null tuboOrigen = False -- No se puede mover de un tubo vacío
     | length tuboDestino >= tamanoTubo = False -- No se puede mover a un tubo lleno
     | null tuboDestino = True -- Se puede mover a un tubo vacío
-    otherwise =
+    | otherwise =
         (head tuboOrigen) == (head tuboDestino)  -- Solo se puede mover si los colores coinciden
 
 -- Ejecuta el movimiento, devolviendo el nuevo estado del juego
