@@ -1,6 +1,7 @@
-module GameLogic (esMovimientoValido, moverBola, estaResuelto) where
+module GameLogic (esMovimientoValido, moverBola, estaResuelto, resolver) where
 
 import GameTypes
+import Data.List (nub)
 
 tamanoTubo :: Int
 tamanoTubo = 4 -- Tamaño máximo de bolas en un tubo
@@ -71,3 +72,35 @@ esTuboResuelto tubo
 estaResuelto :: EstadoJuego -> Bool
 estaResuelto tablero =
     all esTuboResuelto tablero
+
+-- Solucionador
+-- Lista de todos los movimientos posibles desde el estado actual
+movimientosPosibles :: EstadoJuego -> [(EstadoJuego, (Int, Int))]
+movimientosPosibles tablero =
+    let 
+        indices = [0 .. length tablero - 1]
+        pares = [(i, j) | i <- indices, j <- indices, i /= j]
+    in 
+        [ (moverBola tablero i j, (i, j)) 
+        | (i, j) <- pares, esMovimientoValido tablero i j]
+
+-- Algoritmo BFS para encontrar la solución
+resolver :: EstadoJuego -> Maybe [(Int, Int)]
+resolver estadoInicial = bfs [(estadoInicial, [])] []
+    where
+        bfs :: [(EstadoJuego, [(Int, Int)])] -> [EstadoJuego] -> Maybe [(Int, Int)]
+        bfs [] _ = Nothing -- No hay solución
+        bfs ((actual, historial):restoCola) visitados
+            | estaResuelto actual = Just (reverse historial) -- Se encontró la solución
+            | otherwise =
+                let 
+                    -- Generar los siguientes estados posibles
+                    siguientes = movimientosPosibles actual
+                    -- Filtrar los estados ya visitados
+                    nuevos = filter (\(estado, _) -> not (estado `elem` visitados)) siguientes
+                    -- crear los nuevos elementos de la cola
+                    colaNueva = restoCola ++ [(estado, (desde, hacia) : historial) | (estado, (desde, hacia)) <- nuevos]
+                    -- Agregar los nuevos estados a la lista de visitados
+                    visitadosNuevos = visitados ++ map fst nuevos
+                in
+                    bfs colaNueva visitadosNuevos

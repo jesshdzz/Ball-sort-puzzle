@@ -18,7 +18,7 @@ main = do
     case posiblePeticion of
         Nothing -> do
             -- Si la decodificación falla, responder con un error
-            let errorResp = Respuesta Nothing "Error: JSON inválido" False
+            let errorResp = Respuesta Nothing "Error: JSON inválido" False Nothing
             B.putStrLn (encode errorResp)
         Just peticion -> do
             procesarPeticion peticion
@@ -26,8 +26,9 @@ main = do
 procesarPeticion :: Peticion -> IO ()
 procesarPeticion p
     | accion p == "mover" = manejarMovimiento p
+    | accion p == "resolver" = manejarResolver p
     | otherwise = do
-        let resp = Respuesta Nothing "Error: Acción desconocida" False
+        let resp = Respuesta Nothing "Error: Acción desconocida" False Nothing
         B.putStrLn (encode resp)
 
 manejarMovimiento :: Peticion -> IO ()
@@ -41,9 +42,21 @@ manejarMovimiento p = do
             let estadoNuevo = moverBola estadoActual desde hacia
                 victoria = estaResuelto estadoNuevo
                 msg = if victoria then "Ganaste!" else "OK"
-                resp = Respuesta (Just estadoNuevo) msg victoria
+                resp = Respuesta (Just estadoNuevo) msg victoria Nothing
             B.putStrLn (encode resp)
         else do
             -- movimiento inválido
-            let resp = Respuesta Nothing "Movimiento inválido" False
+            let resp = Respuesta Nothing "Movimiento inválido" False Nothing
+            B.putStrLn (encode resp)
+
+manejarResolver :: Peticion -> IO ()
+manejarResolver p = do
+    let estadoActual = estado p
+    case resolver estadoActual of
+        Nothing -> do
+            let resp = Respuesta Nothing "No se encontró solución" False Nothing
+            B.putStrLn (encode resp)
+        Just pasos -> do
+            let pasosLista = map (\(desde, hacia) -> [desde, hacia]) pasos
+            let resp = Respuesta Nothing "Solución encontrada" False (Just pasosLista)
             B.putStrLn (encode resp)

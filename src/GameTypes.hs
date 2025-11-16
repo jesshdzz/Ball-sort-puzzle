@@ -26,7 +26,8 @@ instance FromJSON Peticion
 data Respuesta = Respuesta {
     nuevoEstado :: Maybe EstadoJuego, -- El tablero actualizado, si aplica
     mensaje :: String,                -- "OK", "Movimiento inválido", etc...
-    esVictoria :: Bool                -- Indica si el juego se ha ganado
+    esVictoria :: Bool,                -- Indica si el juego se ha ganado
+    solucionesPosibles :: Maybe [[Int]] -- Lista de movimientos para resolver el juego, si aplica
 } deriving (Show, Generic)
 
 instance ToJSON Respuesta
