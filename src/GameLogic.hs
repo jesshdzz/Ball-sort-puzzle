@@ -24,7 +24,9 @@ reglasValidas tuboOrigen tuboDestino
     | length tuboDestino >= tamanoTubo = False -- No se puede mover a un tubo lleno
     | null tuboDestino = True -- Se puede mover a un tubo vacío
     | otherwise =
-        (head tuboOrigen) == (head tuboDestino)  -- Solo se puede mover si los colores coinciden
+        let colorOrigen = head tuboOrigen
+            colorDestino = head tuboDestino
+        in colorOrigen == colorDestino -- Solo se puede mover si los colores coinciden
 
 -- Ejecuta el movimiento, devolviendo el nuevo estado del juego
 -- Se asume que el movimiento es válido
@@ -33,13 +35,17 @@ moverBola tablero origen destino =
     let
         tuboOrigen = tablero !! origen -- Sacar la bola del tubo de origen
         tuboDestino = tablero !! destino
+        
+        colorMover = head tuboOrigen
 
-        (bolaAMover, nuevoTuboOrigen) = case tuboOrigen of
-            (b:bs) -> (b, bs)
-            []     -> error "Movimiento inválido: tubo de origen vacío"
+        bolasDisponibles = length (takeWhile (== colorMover) tuboOrigen)
+        espacioDisponible = tamanoTubo - length tuboDestino
+        cantidadAMover = min bolasDisponibles espacioDisponible
 
+        (bolasAMover, nuevoTuboOrigen) = splitAt cantidadAMover tuboOrigen
+    
         -- Agregar la bola al tubo de destino
-        nuevoTuboDestino = bolaAMover : tuboDestino
+        nuevoTuboDestino = bolasAMover ++ tuboDestino
 
         -- Actualizar el estado del juego
         -- Reemplaza el tubo en la posición dada con el nuevo tubo
