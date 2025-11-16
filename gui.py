@@ -422,8 +422,8 @@ def main():
                         }
                         res = llamar_haskell(peticion)
 
-                        if res and res.get("solucion"):
-                            cola_solucion = res["solucion"]
+                        if res and res.get("solucionesPosibles"):
+                            cola_solucion = res["solucionesPosibles"]
                             mensaje = f"Solución encontrada: {len(cola_solucion)} pasos"
                         else:
                             mensaje = "La IA no encontró solución"
@@ -579,3 +579,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -6,7 +6,7 @@ import GHC.Generics (Generic)
 import Data.Aeson (ToJSON, FromJSON)
 
 data Color = Rojo | Verde | Azul | Amarillo
-    deriving (Show, Eq, Generic)
+    deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON Color
 instance FromJSON Color
