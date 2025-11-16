@@ -25,6 +25,8 @@ source-repository head
 
 library
   exposed-modules:
+      GameLogic
+      GameTypes
       Lib
   other-modules:
       Paths_ball_sort_puzzle
@@ -34,7 +36,8 @@ library
       src
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
   default-language: Haskell2010
 
 executable ball-sort-puzzle-exe
@@ -47,7 +50,8 @@ executable ball-sort-puzzle-exe
       app
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      ball-sort-puzzle
+      aeson
+    , ball-sort-puzzle
     , base >=4.7 && <5
   default-language: Haskell2010
 
@@ -62,6 +66,7 @@ test-suite ball-sort-puzzle-test
       test
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      ball-sort-puzzle
+      aeson
+    , ball-sort-puzzle
     , base >=4.7 && <5
   default-language: Haskell2010
