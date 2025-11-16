@@ -5,7 +5,7 @@ module GameTypes where
 import GHC.Generics (Generic)
 import Data.Aeson (ToJSON, FromJSON)
 
-data Color = Rojo | Verde | Azul | Amarillo
+data Color = Rojo | Verde | Azul | Amarillo | Morado | Naranja | Cyan | Rosa
     deriving (Show, Eq, Ord, Generic)
 
 instance ToJSON Color

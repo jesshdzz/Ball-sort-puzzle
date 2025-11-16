@@ -1,8 +1,9 @@
 module GameLogic (esMovimientoValido, moverBola, estaResuelto, resolver) where
 
 import GameTypes
-import Data.List (nub, sort)
+import Data.List (nub, sort, sortBy)
 import qualified Data.Set as Set
+import Data.Ord (comparing)
 
 tamanoTubo :: Int
 tamanoTubo = 4 -- Tamaño máximo de bolas en un tubo
@@ -85,39 +86,68 @@ movimientosPosibles tablero =
         [ (moverBola tablero i j, (i, j)) 
         | (i, j) <- pares, esMovimientoValido tablero i j]
 
--- Algoritmo BFS para encontrar la solución
+-- Puntúa qué tan "desordenado" está un tablero. Más bajo es mejor.
+heuristic :: EstadoJuego -> Int
+heuristic = sum . map puntuarTubo
+  where
+    -- Puntúa un solo tubo
+    puntuarTubo :: Tubo -> Int
+    puntuarTubo [] = 0 -- Un tubo vacío está "resuelto" (puntuación 0)
+    puntuarTubo tubo = 
+        case reverse tubo of -- Invertimos: [Fondo, ... Tope]
+            [] -> 0 -- Imposible, pero exhaustivo
+            (colorFondo:resto) -> 
+                -- Contamos cuántas bolas en 'resto' NO son del 'colorFondo'
+                length (filter (/= colorFondo) resto)
+
 resolver :: EstadoJuego -> Maybe [(Int, Int)]
 resolver estadoInicial = 
     let 
-        -- 1. Normalizamos el estado inicial
+        -- 1. Normalizamos y preparamos
         estadoInicialNorm = sort estadoInicial
-        -- 2. Creamos nuestro Set de visitados, con el estado inicial ya dentro
         visitadosInicial = Set.fromList [estadoInicialNorm]
+        
+        -- 2. La cola inicial (EstadoReal, HistorialDeMovimientos)
+        colaInicial = [(estadoInicial, [])]
     in 
-        -- 3. Iniciamos la cola con el estado REAL
-        bfs [(estadoInicial, [])] visitadosInicial
+        -- 3. Iniciar la búsqueda
+        bfs colaInicial visitadosInicial
   where
-    -- bfs :: Cola(EstadoReal, Historial) -> Visitados(Set[EstadoNormalizado]) -> Solución
+    -- bfs :: ColaPrioridad -> Visitados -> Solución
     bfs :: [(EstadoJuego, [(Int, Int)])] -> Set.Set EstadoJuego -> Maybe [(Int, Int)]
-    bfs [] _ = Nothing -- Cola vacía, no hay solución
-    bfs ((actual, historial):restoCola) visitados
-        | estaResuelto actual = Just (reverse historial) -- ¡Éxito!
-        | otherwise = 
-            let 
-                -- 1. Generar todos los movimientos desde el estado REAL
-                siguientes = movimientosPosibles actual
+    bfs [] _ = Nothing -- Se acabó la cola, no hay solución
+    
+    -- El bucle principal de búsqueda
+    bfs cola visitados =
+        let 
+            -- 1. ¡LA MAGIA! Ordenamos la cola por heurística.
+            -- El estado que "se vea mejor" (puntuación más baja) se pone primero.
+            colaOrdenada = sortBy (comparing (heuristic . fst)) cola
+            
+            -- 2. Sacamos el "mejor" estado para procesar
+            (actual, historial) = head colaOrdenada
+            restoCola = tail colaOrdenada
+        in
+        
+        -- 3. ¿Ganamos?
+        if estaResuelto actual then
+            Just (reverse historial) -- ¡Solución encontrada!
+        else
+            let
+                -- 4. Generar todos los movimientos vecinos
+                vecinos = movimientosPosibles actual
                 
-                -- 2. Normalizar los nuevos estados
-                siguientesNorm = map (\(e, m) -> (sort e, (e, m))) siguientes
+                -- 5. Preparar los nuevos estados para la cola
+                -- (EstadoReal, NuevoHistorial, EstadoNormalizado)
+                nuevosEstados = [ (eReal, (d,h):historial, sort eReal) | (eReal, (d,h)) <- vecinos ]
                 
-                -- 3. Filtrar los que ya hemos visitado (¡USANDO Set.member!)
-                -- 'Set.member' es ultra-rápido comparado con 'elem'
-                nuevos = filter (\(eNorm, _) -> not (Set.member eNorm visitados)) siguientesNorm
+                -- 6. Filtrar los que ya hemos visitado
+                estadosParaAnadir = filter (\(_, _, eNorm) -> not (Set.member eNorm visitados)) nuevosEstados
                 
-                -- 4. Añadir los estados REALES (eReal) a la cola
-                colaNueva = restoCola ++ [ (eReal, (d, h) : historial) | (_, (eReal, (d, h))) <- nuevos ]
+                -- 7. Añadir los nuevos estados a la cola y a visitados
+                colaNueva = restoCola ++ map (\(eR, h, _) -> (eR, h)) estadosParaAnadir
+                visitadosNuevos = Set.union visitados (Set.fromList (map (\(_,_,eN) -> eN) estadosParaAnadir))
                 
-                -- 5. Añadir los nuevos estados NORMALIZADOS al Set de visitados
-                visitadosNuevos = Set.union visitados (Set.fromList (map fst nuevos))
-            in 
+            in
+                -- 8. Llamada recursiva con la nueva cola y visitados
                 bfs colaNueva visitadosNuevos
