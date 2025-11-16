@@ -38,6 +38,7 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , bytestring
   default-language: Haskell2010
 
 executable ball-sort-puzzle-exe
@@ -53,6 +54,7 @@ executable ball-sort-puzzle-exe
       aeson
     , ball-sort-puzzle
     , base >=4.7 && <5
+    , bytestring
   default-language: Haskell2010
 
 test-suite ball-sort-puzzle-test
@@ -69,4 +71,5 @@ test-suite ball-sort-puzzle-test
       aeson
     , ball-sort-puzzle
     , base >=4.7 && <5
+    , bytestring
   default-language: Haskell2010
