@@ -265,6 +265,7 @@ def main():
     estado_futuro = None  # Para guardar el estado mientras animamos
     mensaje = ""
     victoria = False
+    cola_solucion = []  # Lista de pasos para la solución automática
 
     corriendo = True
     while corriendo:
@@ -303,6 +304,44 @@ def main():
                     if victoria:
                         estado_app = "GANASTE"
                         victoria = False
+            if cola_solucion and not animaciones:
+                proximo_paso = cola_solucion.pop(0)
+                origen, destino = proximo_paso
+
+                # Simular el clic para activar la lógica de movimiento/animación existente
+                # Llamamos a Haskell para confirmar el movimiento y obtener el estado futuro
+                peticion = {
+                    "accion": "mover",
+                    "estado": estado_juego,
+                    "indiceDesde": origen,
+                    "indiceHacia": destino,
+                }
+                res = llamar_haskell(peticion)
+
+                if res and res["nuevoEstado"]:
+                    # (COPIA AQUÍ LA LÓGICA DE ANIMACIÓN QUE YA TIENES EN EL EVENTO DE MOUSE)
+                    estado_futuro = res["nuevoEstado"]
+                    len_antes = len(estado_juego[origen])
+                    len_despues = len(estado_futuro[origen])
+                    num_bolas_movidas = len_antes - len_despues
+                    color_movido = estado_juego[origen][0]
+
+                    for k in range(num_bolas_movidas):
+                        pos_ini = calcular_posicion_bola(
+                            origen, len_antes - 1 - k, num_tubos
+                        )
+                        len_dest_actual = len(estado_juego[destino])
+                        pos_fin = calcular_posicion_bola(
+                            destino, len_dest_actual + k, num_tubos
+                        )
+                        anim = AnimacionBola(
+                            color_movido, pos_ini, pos_fin, velocidad=25
+                        )  # Más rápido para el solver
+                        animaciones.append(anim)
+
+                    estado_juego[origen] = estado_juego[origen][num_bolas_movidas:]
+
+                    victoria_pendiente = res["esVictoria"]
             # Dibujado
             dibujar_juego(pantalla, estado_juego, seleccionado, animaciones)
 
@@ -415,6 +454,53 @@ def main():
                                 else:
                                     mensaje = "Movimiento invalido"
                                     seleccionado = None
+            btn_resolver = pygame.React(ANCHO_PANTALLA - 160, 20, 140, 40)
+            # Solo dibujarlo si no hay animaciones activas
+            if not animaciones:
+                color_btn = (70, 130, 180)
+                if btn_resolver.collidepoint(pos_mouse):
+                    color_btn = (100, 160, 210)
+                pygame.draw.rect(pantalla, color_btn, btn_resolver, border_radius=5)
+                txt_res = fuente_btn.render("Resolver IA", True, COLOR_TEXTO)
+                pantalla.blit(
+                    txt_res,
+                    (
+                        btn_resolver.centerx - txt_res.get_width() // 2,
+                        btn_resolver.centery - txt_res.get_height() // 2,
+                    ),
+                )
+
+            # ... (dibujar_juego, mensajes, etc) ...
+
+            for evento in pygame.event.get():
+                # ... (QUIT y lógica de movimiento igual) ...
+
+                # LÓGICA DEL BOTÓN RESOLVER
+                if evento.type == pygame.MOUSEBUTTONDOWN and not animaciones:
+                    if btn_resolver.collidepoint(pos_mouse):
+                        mensaje = "Pensando..."
+                        dibujar_juego(pantalla, estado_juego, seleccionado, animaciones)
+                        pygame.display.flip()  # Forzar pintado del mensaje
+
+                        peticion = {
+                            "accion": "resolver",
+                            "estado": estado_juego,
+                            "indiceDesde": None,
+                            "indiceHacia": None,
+                        }
+                        res = llamar_haskell(peticion)
+
+                        if res and res.get("solucion"):
+                            pasos = res["solucion"]
+                            mensaje = f"Solución: {len(pasos)} pasos"
+
+                            # EJECUTAR LA SOLUCIÓN AUTOMÁTICAMENTE
+                            # Esto es un truco: Convertimos la lista de pasos en una cola de eventos
+                            # Pero para hacerlo simple, vamos a mover las bolas PASO A PASO en el loop.
+                            # Aquí guardamos la lista de pasos pendientes.
+                            cola_solucion = pasos
+                        else:
+                            mensaje = "No encontré solución :("
 
         elif estado_app == "GANASTE":
             pantalla.fill(COLOR_FONDO)
