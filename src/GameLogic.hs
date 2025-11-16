@@ -28,8 +28,8 @@ reglasValidas tuboOrigen tuboDestino
 
 -- Ejecuta el movimiento, devolviendo el nuevo estado del juego
 -- Se asume que el movimiento es válido
-moverBola :: EstadoJuego -> Int -> Int -> Maybe EstadoJuego
-moverBola estado origen destino
+moverBola :: EstadoJuego -> Int -> Int -> EstadoJuego
+moverBola estado origen destino =
     let
         -- Sacar la bola del tubo de origen
         tuboOrigen = estado !! origen
@@ -39,14 +39,15 @@ moverBola estado origen destino
         -- Agregar la bola al tubo de destino
         tuboDestino = estado !! destino
         nuevoTuboDestino = bolaAMover : tuboDestino
-        
+
         -- Actualizar el estado del juego
         -- Reemplaza el tubo en la posición dada con el nuevo tubo
         actualizarLista :: Int -> a -> [a] -> [a]
         actualizarLista idx nuevoElemento lista =
             take idx lista ++ [nuevoElemento] ++ drop (idx + 1) lista
-        
+
         -- Reemplaza primero el tubo de origen y luego el de destino
         estadoIntermedio = actualizarLista origen nuevoTuboOrigen estado
         estadoFinal = actualizarLista destino nuevoTuboDestino estadoIntermedio
-    in estadoFinal
+    in
+        estadoFinal
