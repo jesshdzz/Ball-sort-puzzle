@@ -264,6 +264,7 @@ def main():
     animaciones = []  # Lista de objetos AnimacionBola
     estado_futuro = None  # Para guardar el estado mientras animamos
     mensaje = ""
+    victoria = False
 
     corriendo = True
     while corriendo:
@@ -298,19 +299,10 @@ def main():
                     animaciones = []
                     estado_juego = estado_futuro
                     estado_futuro = None
-                    # Verificar victoria DESPUÉS de la animación
-                    # Podríamos preguntar a Haskell aquí, pero ya nos lo dijo antes.
-                    # Simplificación: Consultar victoria solo al actualizar
-                    peticion = {
-                        "accion": "verificar",
-                        "estado": estado_juego,
-                        "indiceDesde": None,
-                        "indiceHacia": None,
-                    }
-                    res = llamar_haskell(peticion)
-                    if res and res.get("esVictoria"):
-                        estado_app = "GANASTE"
 
+                    if victoria:
+                        estado_app = "GANASTE"
+                        victoria = False
             # Dibujado
             dibujar_juego(pantalla, estado_juego, seleccionado, animaciones)
 
@@ -368,6 +360,8 @@ def main():
                                 if res and res["nuevoEstado"]:
                                     # MOVIEMIENTO VALIDO: INICIAR ANIMACIÓN
                                     estado_futuro = res["nuevoEstado"]
+
+                                    victoria = res["esVictoria"]
 
                                     # Calcular cuántas bolas y de qué color se mueven
                                     # Comparamos longitudes para saber cuantas salieron
@@ -454,3 +448,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
