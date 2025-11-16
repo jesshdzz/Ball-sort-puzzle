@@ -33,8 +33,8 @@ procesarPeticion p
 manejarMovimiento :: Peticion -> IO ()
 manejarMovimiento p = do
     let estadoActual = estado p
-        desde = fromMaybe (-1) (origen p)
-        hacia = fromMaybe (-1) (destino p)
+        desde = fromMaybe (-1) (indiceDesde p)
+        hacia = fromMaybe (-1) (indiceHacia p)
 
     if esMovimientoValido estadoActual desde hacia
         then do

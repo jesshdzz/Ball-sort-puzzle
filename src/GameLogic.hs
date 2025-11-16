@@ -31,13 +31,14 @@ reglasValidas tuboOrigen tuboDestino
 moverBola :: EstadoJuego -> Int -> Int -> EstadoJuego
 moverBola tablero origen destino =
     let
-        -- Sacar la bola del tubo de origen
-        tuboOrigen = tablero !! origen
-        bolaAMover = head tuboOrigen
-        nuevoTuboOrigen = tail tuboOrigen
+        tuboOrigen = tablero !! origen -- Sacar la bola del tubo de origen
+        tuboDestino = tablero !! destino
+
+        (bolaAMover, nuevoTuboOrigen) = case tuboOrigen of
+            (b:bs) -> (b, bs)
+            []     -> error "Movimiento inválido: tubo de origen vacío"
 
         -- Agregar la bola al tubo de destino
-        tuboDestino = tablero !! destino
         nuevoTuboDestino = bolaAMover : tuboDestino
 
         -- Actualizar el estado del juego
@@ -62,5 +63,5 @@ esTuboResuelto tubo
             []              -> True
 
 estaResuelto :: EstadoJuego -> Bool
-estaResuelto estado =
-    all esTuboResuelto estado
+estaResuelto tablero =
+    all esTuboResuelto tablero

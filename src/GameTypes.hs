@@ -17,8 +17,8 @@ type EstadoJuego = [Tubo]
 data Peticion = Peticion {
     accion :: String,       -- "mover", "verificar", etc...
     estado :: EstadoJuego,  -- El tablero actual
-    origen :: Maybe Int,    -- Puede ser null si no se requiere
-    destino :: Maybe Int    -- Puede ser null si no se requiere
+    indiceDesde :: Maybe Int,    -- Puede ser null si no se requiere
+    indiceHacia :: Maybe Int    -- Puede ser null si no se requiere
 } deriving (Show, Generic)
 
 instance FromJSON Peticion
