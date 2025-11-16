@@ -51,3 +51,16 @@ moverBola estado origen destino =
         estadoFinal = actualizarLista destino nuevoTuboDestino estadoIntermedio
     in
         estadoFinal
+
+esTuboResuelto :: Tubo -> Bool
+esTuboResuleto tubo
+    | null tubo = True -- Un tubo vacío se considera resuelto
+    | length tubo < tamanoTubo = False -- Un tubo no lleno no está resuelto
+    | otherwise =
+        let
+            color = head tubo
+        in all (== color) tubo
+
+estaResuelto :: EstadoJuego -> Bool
+estaResuelto estado =
+    all esTuboResuelto estado
