@@ -3,7 +3,7 @@
 module GameTypes where
 
 import GHC.Generics (Generic)
-import Data.Aeson (To JSON, FromJSON)
+import Data.Aeson (ToJSON, FromJSON)
 
 data Color = Rojo | Verde | Azul | Amarillo
     deriving (Show, Eq, Generic)
