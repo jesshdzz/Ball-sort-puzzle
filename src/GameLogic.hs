@@ -94,7 +94,7 @@ heuristic = sum . map puntuarTubo
     puntuarTubo :: Tubo -> Int
     puntuarTubo [] = 0 -- Un tubo vacío está "resuelto" (puntuación 0)
     puntuarTubo tubo = 
-        case reverse tubo of -- Invertimos: [Fondo, ... Tope]
+        case reverse tubo of -- [Fondo, ... Tope]
             [] -> 0 -- Imposible, pero exhaustivo
             (colorFondo:resto) -> 
                 -- Contamos cuántas bolas en 'resto' NO son del 'colorFondo'
@@ -120,21 +120,21 @@ resolver estadoInicial =
     -- El bucle principal de búsqueda
     bfs cola visitados =
         let 
-            -- 1. ¡LA MAGIA! Ordenamos la cola por heurística.
-            -- El estado que "se vea mejor" (puntuación más baja) se pone primero.
+            -- Ordenamos la cola por heurística.
+            -- El estado con puntuación más baja se pone primero.
             colaOrdenada = sortBy (comparing (heuristic . fst)) cola
             
-            -- 2. Sacamos el "mejor" estado para procesar
+            -- Sacamos el "mejor" estado para procesar
             (actual, historial) = head colaOrdenada
             restoCola = tail colaOrdenada
         in
         
-        -- 3. ¿Ganamos?
+        -- Saber si hay solución
         if estaResuelto actual then
-            Just (reverse historial) -- ¡Solución encontrada!
+            Just (reverse historial) -- Solución encontrada
         else
             let
-                -- 4. Generar todos los movimientos vecinos
+                -- Generar todos los movimientos vecinos
                 vecinos = movimientosPosibles actual
                 
                 -- 5. Preparar los nuevos estados para la cola
