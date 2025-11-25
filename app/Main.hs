@@ -18,7 +18,7 @@ main = do
     case posiblePeticion of
         Nothing -> do
             -- Si la decodificación falla, responder con un error
-            let errorResp = Respuesta Nothing "Error: JSON inválido" False Nothing
+            let errorResp = Respuesta Nothing "Error: JSON inválido" False Nothing Nothing
             B.putStrLn (encode errorResp)
         Just peticion -> do
             procesarPeticion peticion
@@ -28,7 +28,7 @@ procesarPeticion p
     | accion p == "mover" = manejarMovimiento p
     | accion p == "resolver" = manejarResolver p
     | otherwise = do
-        let resp = Respuesta Nothing "Error: Acción desconocida" False Nothing
+        let resp = Respuesta Nothing "Error: Acción desconocida" False Nothing Nothing
         B.putStrLn (encode resp)
 
 manejarMovimiento :: Peticion -> IO ()
@@ -42,21 +42,25 @@ manejarMovimiento p = do
             let estadoNuevo = moverBola estadoActual desde hacia
                 victoria = estaResuelto estadoNuevo
                 msg = if victoria then "Ganaste!" else "OK"
-                resp = Respuesta (Just estadoNuevo) msg victoria Nothing
+                resp = Respuesta (Just estadoNuevo) msg victoria Nothing Nothing
             B.putStrLn (encode resp)
         else do
             -- movimiento inválido
-            let resp = Respuesta Nothing "Movimiento inválido" False Nothing
+            let resp = Respuesta Nothing "Movimiento inválido" False Nothing Nothing
             B.putStrLn (encode resp)
 
 manejarResolver :: Peticion -> IO ()
 manejarResolver p = do
     let estadoActual = estado p
-    case resolver estadoActual of
-        Nothing -> do
-            let resp = Respuesta Nothing "No se encontró solución" False Nothing
+    -- Leemos el algoritmo, por defecto "GREEDY"
+    let nombreAlg = fromMaybe "GREEDY" (algoritmo p)
+ 
+    case resolver estadoActual nombreAlg of
+        Just (pasos, nodos) -> do
+            let pasosLista = map (\(d, h) -> [d, h]) pasos
+            -- Enviamos la solución Y el conteo de nodos
+            let resp = Respuesta Nothing "Solución Encontrada" False (Just pasosLista) (Just nodos)
             B.putStrLn (encode resp)
-        Just pasos -> do
-            let pasosLista = map (\(desde, hacia) -> [desde, hacia]) pasos
-            let resp = Respuesta Nothing "Solución encontrada" False (Just pasosLista)
+        Nothing -> do
+            let resp = Respuesta Nothing "Límite excedido o sin solución" False Nothing (Just 0)
             B.putStrLn (encode resp)

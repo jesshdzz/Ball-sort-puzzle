@@ -8,6 +8,8 @@ import Data.Ord (comparing)
 tamanoTubo :: Int
 tamanoTubo = 4 -- Tamaño máximo de bolas en un tubo
 
+type NodoBusqueda = (EstadoJuego, [(Int, Int)]) -- (EstadoActual, HistorialDeMovimientos)
+
 obtenerTubo :: EstadoJuego -> Int -> Maybe Tubo
 obtenerTubo tablero indice
     | indice < 0 || indice >= length tablero = Nothing
@@ -95,59 +97,60 @@ heuristic = sum . map puntuarTubo
     puntuarTubo [] = 0 -- Un tubo vacío está "resuelto" (puntuación 0)
     puntuarTubo tubo = 
         case reverse tubo of -- [Fondo, ... Tope]
-            [] -> 0 -- Imposible, pero exhaustivo
+            [] -> 0
             (colorFondo:resto) -> 
                 -- Contamos cuántas bolas en 'resto' NO son del 'colorFondo'
                 length (filter (/= colorFondo) resto)
 
-resolver :: EstadoJuego -> Maybe [(Int, Int)]
-resolver estadoInicial = 
+resolver :: EstadoJuego -> String -> Maybe ([(Int, Int)], Int)
+resolver estadoInicial nombreAlgoritmo = 
     let 
-        -- 1. Normalizamos y preparamos
         estadoInicialNorm = sort estadoInicial
         visitadosInicial = Set.fromList [estadoInicialNorm]
-        
-        -- 2. La cola inicial (EstadoReal, HistorialDeMovimientos)
         colaInicial = [(estadoInicial, [])]
+        -- Iniciamos con 0 nodos visitados
     in 
-        -- 3. Iniciar la búsqueda
-        bfs colaInicial visitadosInicial
-  where
-    -- bfs :: ColaPrioridad -> Visitados -> Solución
-    bfs :: [(EstadoJuego, [(Int, Int)])] -> Set.Set EstadoJuego -> Maybe [(Int, Int)]
-    bfs [] _ = Nothing -- Se acabó la cola, no hay solución
-    
-    -- El bucle principal de búsqueda
-    bfs cola visitados =
+        busquedaGenerica colaInicial visitadosInicial 0 nombreAlgoritmo
+
+-- Función que cambia su comportamiento según el algoritmo
+busquedaGenerica :: [NodoBusqueda] -> Set.Set EstadoJuego -> Int -> String -> Maybe ([(Int, Int)], Int)
+busquedaGenerica [] _ _ _ = Nothing
+busquedaGenerica cola visitados contador alg
+    | contador > 200000 = Nothing -- Límite de seguridad
+    | otherwise =
         let 
-            -- Ordenamos la cola por heurística.
-            -- El estado con puntuación más baja se pone primero.
-            colaOrdenada = sortBy (comparing (heuristic . fst)) cola
-            
-            -- Sacamos el "mejor" estado para procesar
-            (actual, historial) = head colaOrdenada
-            restoCola = tail colaOrdenada
+            -- 1. ELEGIR EL SIGUIENTE NODO
+            -- extrae ((Estado, Historial), RestoDeCola)
+            ((estadoActual, pasos), restoCola) = case alg of
+                "DFS" -> (head cola, tail cola) -- Toma el primero (LIFO behavior al insertar al inicio)
+                "BFS" -> (head cola, tail cola) -- Toma el primero (FIFO behavior al insertar al final)
+                "GREEDY" -> 
+                     -- Ordenamos y sacamos el mejor
+                     let colaOrdenada = sortBy (comparing (heuristic . fst)) cola
+                     in (head colaOrdenada, tail colaOrdenada)
+                _ -> (head cola, tail cola)
+
         in
-        
-        -- Saber si hay solución
-        if estaResuelto actual then
-            Just (reverse historial) -- Solución encontrada
-        else
-            let
-                -- Generar todos los movimientos vecinos
-                vecinos = movimientosPosibles actual
-                
-                -- 5. Preparar los nuevos estados para la cola
-                -- (EstadoReal, NuevoHistorial, EstadoNormalizado)
-                nuevosEstados = [ (eReal, (d,h):historial, sort eReal) | (eReal, (d,h)) <- vecinos ]
-                
-                -- 6. Filtrar los que ya hemos visitado
-                estadosParaAnadir = filter (\(_, _, eNorm) -> not (Set.member eNorm visitados)) nuevosEstados
-                
-                -- 7. Añadir los nuevos estados a la cola y a visitados
-                colaNueva = restoCola ++ map (\(eR, h, _) -> (eR, h)) estadosParaAnadir
-                visitadosNuevos = Set.union visitados (Set.fromList (map (\(_,_,eN) -> eN) estadosParaAnadir))
-                
-            in
-                -- 8. Llamada recursiva con la nueva cola y visitados
-                bfs colaNueva visitadosNuevos
+            if estaResuelto estadoActual then
+                Just (reverse pasos, contador) -- Éxito
+            else
+                let
+                    vecinos = movimientosPosibles estadoActual
+                    
+                    -- Generar nuevos nodos: (Estado, NuevoHistorial)
+                    nuevosNodos = [ (eReal, (d,h):pasos) | (eReal, (d,h)) <- vecinos ]
+                    
+                    -- Filtrar visitados
+                    nodosValidos = filter (\(e, _) -> not (Set.member (sort e) visitados)) nuevosNodos
+                    
+                    -- Actualizar Visitados
+                    nuevosVisitados = Set.union visitados (Set.fromList (map (sort . fst) nodosValidos))
+                    
+                    -- 2. COMBINAR LA COLA
+                    nuevaCola = case alg of
+                        "DFS" -> nodosValidos ++ restoCola      -- Pone los nuevos AL PRINCIPIO
+                        "BFS" -> restoCola ++ nodosValidos      -- Pone los nuevos AL FINAL
+                        "GREEDY" -> restoCola ++ nodosValidos   -- (El ordenamiento ocurre al sacar)
+                        _ -> restoCola ++ nodosValidos
+                in
+                    busquedaGenerica nuevaCola nuevosVisitados (contador + 1) alg

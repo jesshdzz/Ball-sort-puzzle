@@ -3,13 +3,13 @@ import sys
 import json
 import subprocess
 import random
-import math
+import time
 
 # --- CONFIGURACIÓN INICIAL DE LA VENTANA ---
 ANCHO_INICIAL = 1280
 ALTO_INICIAL = 720
 
-# ---HASKELL ---
+# --- EL PUENTE (HASKELL) ---
 EXE_HASKELL = "./ball-sort-puzzle-exe"
 
 
@@ -34,12 +34,12 @@ COLORES = {
     "TEXTO_BOTON": (255, 255, 255),
     "BOTON_NORMAL": (40, 50, 80),
     "BOTON_HOVER": (70, 80, 110),
-    "BOTON_ACCION": (70, 130, 180),  # Azul para acciones especiales
+    "BOTON_ACCION": (70, 130, 180),
+    "BOTON_ALGO": (100, 100, 120),
     "TUBO_VACIO": (30, 35, 50, 150),
     "TUBO_BORDE": (200, 200, 220, 180),
     "TUBO_SELECCION": (100, 255, 100),
     "SOMBRA_BOLA": (0, 0, 0, 50),
-    "AYUDA_FONDO": (0, 0, 0, 200),  # Fondo semi-transparente para el modal
     "PALETA_BOLAS": {
         "Rojo": (255, 89, 94),
         "Verde": (138, 201, 38),
@@ -77,6 +77,10 @@ class Boton:
         self.padding_x = padding_x
         self.padding_y = padding_y
         self.color_base = color_base
+        self.actualizar_texto(texto)  # Inicializar rect y render
+
+    def actualizar_texto(self, nuevo_texto):
+        self.texto = nuevo_texto
         self.texto_render = self.fuente.render(self.texto, True, COLORES["TEXTO_BOTON"])
         ancho = self.texto_render.get_width() + self.padding_x * 2
         alto = self.texto_render.get_height() + self.padding_y * 2
@@ -87,7 +91,6 @@ class Boton:
         self.rect.center = (x_centro, y_centro)
         self.hover = self.rect.collidepoint(pygame.mouse.get_pos())
 
-        # Aclarar color si hay hover
         r, g, b = self.color_base
         color_fondo = (
             (min(255, r + 30), min(255, g + 30), min(255, b + 30))
@@ -227,50 +230,52 @@ def dibujar_menu(pantalla, botones_menu, btn_ayuda, fuentes):
     for i, (key, boton) in enumerate(botones_menu.items()):
         boton.dibujar(pantalla, pantalla.get_width() // 2, y_base + i * 70)
 
-    # Botón de ayuda abajo
     btn_ayuda.dibujar(
         pantalla, pantalla.get_width() // 2, y_base + (len(botones_menu) * 70) + 30
     )
 
 
 def dibujar_ayuda(pantalla, btn_volver, fuentes):
-    # Fondo oscuro transparente
     s = pygame.Surface(pantalla.get_size())
     s.set_alpha(240)
     s.fill((10, 10, 20))
     pantalla.blit(s, (0, 0))
 
     dibujar_texto_centrado(
-        pantalla, "INSTRUCCIONES & IA", fuentes["titulo"], 50, COLORES["TEXTO_TITULO"]
+        pantalla,
+        "INSTRUCCIONES & IA EDUCATIVA",
+        fuentes["titulo"],
+        30,
+        COLORES["TEXTO_TITULO"],
     )
 
-    # Texto explicativo (Manual)
     lineas = [
-        "OBJETIVO:",
-        "Ordena las bolas para que cada tubo contenga solo bolas del mismo color.",
+        "OBJETIVO: Ordena las bolas por color en los tubos.",
         "",
         "CONTROLES:",
-        "• Clic Izquierdo: Seleccionar tubo origen / Mover a tubo destino.",
-        "• Botón 'Resolver IA': Deja que el algoritmo Greedy en Haskell resuelva el nivel.",
+        "• Clic Izquierdo: Mover bolas manualmente.",
+        "• Botón 'Modo': Cambia el algoritmo de búsqueda (GREEDY, DFS, BFS).",
+        "• Botón 'Resolver': La IA juega por ti usando el algoritmo seleccionado.",
         "",
-        "¿CÓMO FUNCIONA LA IA?",
-        "El backend en Haskell utiliza un algoritmo de 'Búsqueda Voraz' (Greedy BFS).",
-        "Calcula una heurística basada en qué tan ordenados están los tubos y",
-        "siempre elige el movimiento más prometedor. Utiliza estructuras 'Set'",
-        "para recordar millones de estados y evitar ciclos.",
+        "COMPARACIÓN DE ALGORITMOS (EDUCATIVO):",
+        "• GREEDY (Voraz): ¡Equilibrado! Usa heurísticas para encontrar",
+        "  una solución rápida y buena. Recomendado.",
+        "• BFS (Amplitud): ¡El Perfeccionista! Encuentra la solución MÁS CORTA (óptima),",
+        "  pero es muy lento y consume mucha memoria en niveles difíciles.",
+        "• DFS (Profundidad): ¡El Temerario! Muy rápido explorando, pero suele",
+        "  encontrar soluciones ineficientes de cientos de pasos.",
         "",
-        "DESARROLLADO CON:",
-        "Lógica pura en Haskell (Backend) | Gráficos en Python (Frontend)",
+        "Observa las estadísticas (Nodos/Tiempo) al resolver para comparar.",
     ]
 
-    y = 140
+    y = 100
     for linea in lineas:
         color = COLORES["TEXTO_TITULO"] if linea.endswith(":") else COLORES["TEXTO"]
         font = fuentes["boton"] if linea.endswith(":") else fuentes["normal"]
         dibujar_texto_centrado(pantalla, linea, font, y, color)
-        y += 35
+        y += 30
 
-    btn_volver.dibujar(pantalla, pantalla.get_width() // 2, pantalla.get_height() - 80)
+    btn_volver.dibujar(pantalla, pantalla.get_width() // 2, pantalla.get_height() - 60)
 
 
 def dibujar_juego(
@@ -281,20 +286,26 @@ def dibujar_juego(
     geo,
     btn_resolver,
     btn_menu,
+    btn_algoritmo,
     mensaje,
     fuentes,
 ):
     pantalla.fill(COLORES["FONDO"])
+
+    # Dibujar botones superiores
     btn_resolver.dibujar(pantalla, pantalla.get_width() - 120, 50)
     btn_menu.dibujar(pantalla, 120, 50)
+
+    # Dibujar botón de algoritmo (CENTRO ARRIBA)
+    btn_algoritmo.dibujar(pantalla, pantalla.get_width() // 2, 50)
+
     if mensaje:
-        dibujar_texto_centrado(pantalla, mensaje, fuentes["normal"], 30)
+        dibujar_texto_centrado(pantalla, mensaje, fuentes["normal"], 90)
 
     for i, tubo in enumerate(estado):
         x = geo["margen_izq"] + (i * (geo["ancho_tubo"] + geo["espacio_tubo"]))
         y_pos = geo["margen_sup"] - 30 if i == seleccionado else geo["margen_sup"]
 
-        # Dibujar Tubo
         tubo_surf = pygame.Surface(
             (geo["ancho_tubo"], geo["alto_tubo"]), pygame.SRCALPHA
         )
@@ -316,7 +327,6 @@ def dibujar_juego(
         )
         pantalla.blit(tubo_surf, (x, y_pos))
 
-        # Bolas
         for k, color in enumerate(tubo):
             cx, cy = get_pos_bola(geo, i, len(tubo) - 1 - k)
             pygame.draw.circle(
@@ -334,15 +344,21 @@ def dibujar_juego(
 
 
 def dibujar_victoria(pantalla, btn_menu_victoria, fuentes):
-    pantalla.fill(COLORES["FONDO"])
+    # Dimensiones del rectángulo
+    ancho, alto = pantalla.get_size()
+    rect_w, rect_h = int(ancho), int(alto * 0.6)
+    rect_x = (ancho - rect_w) // 2
+    rect_y = (alto - rect_h) // 2
+
+    rect_surface = pygame.Surface((rect_w, rect_h), pygame.SRCALPHA)
+    rect_surface.fill(COLORES["FONDO"])
+    pantalla.blit(rect_surface, (rect_x, rect_y))
+
     dibujar_texto_centrado(
         pantalla, "¡ NIVEL COMPLETADO !", fuentes["titulo"], 200, (100, 255, 100)
     )
     dibujar_texto_centrado(
-        pantalla,
-        "La lógica de Haskell ha validado tu éxito.",
-        fuentes["subtitulo"],
-        280,
+        pantalla, "Felicidades, has completado el nivel!.", fuentes["subtitulo"], 280
     )
     btn_menu_victoria.dibujar(pantalla, pantalla.get_width() // 2, 450)
 
@@ -354,20 +370,22 @@ def main():
     pygame.init()
     pygame.font.init()
     pantalla = pygame.display.set_mode((ANCHO_INICIAL, ALTO_INICIAL), pygame.RESIZABLE)
-    pygame.display.set_caption("Ball Sort - Proyecto Haskell & Python")
+    pygame.display.set_caption("Ball Sort - Proyecto Educativo Haskell & Python")
     reloj = pygame.time.Clock()
 
     fuentes = {
         "titulo": pygame.font.SysFont("Arial", 50, bold=True),
         "subtitulo": pygame.font.SysFont("Arial", 24, italic=True),
         "normal": pygame.font.SysFont("Arial", 20),
-        "boton": pygame.font.SysFont("Arial", 20, bold=True),
+        "boton": pygame.font.SysFont("Arial", 18, bold=True),
     }
 
     # Botones
     botones_menu = {key: Boton(key, fuentes["boton"]) for key in DIFICULTADES.keys()}
     btn_ayuda = Boton(
-        "¿CÓMO JUGAR?", fuentes["boton"], color_base=COLORES["BOTON_ACCION"]
+        "¿CÓMO JUGAR? / EXPLICACIÓN IA",
+        fuentes["boton"],
+        color_base=COLORES["BOTON_ACCION"],
     )
     btn_volver_ayuda = Boton(
         "ENTENDIDO", fuentes["boton"], color_base=COLORES["BOTON_ACCION"]
@@ -377,12 +395,17 @@ def main():
         "Resolver IA", fuentes["boton"], color_base=COLORES["BOTON_ACCION"]
     )
     btn_menu = Boton("Menú", fuentes["boton"])
+
+    algoritmo_actual = "GREEDY"
+    btn_algoritmo = Boton(
+        f"Modo: {algoritmo_actual}", fuentes["boton"], color_base=COLORES["BOTON_ALGO"]
+    )
+
     btn_menu_victoria = Boton(
         "Volver al Menú Principal", fuentes["boton"], padding_x=40
     )
 
-    estado_app = "MENU"  # MENU, AYUDA, JUEGO, GANASTE
-
+    estado_app = "MENU"
     estado_juego, seleccionado, animaciones, estado_futuro, cola_solucion = (
         [],
         None,
@@ -434,8 +457,16 @@ def main():
                 elif estado_app == "JUEGO" and not animaciones:
                     if btn_menu.es_clic(pos_mouse):
                         estado_app = "MENU"
+
+                    # LOGICA CAMBIO ALGORITMO
+                    elif btn_algoritmo.es_clic(pos_mouse):
+                        modos = ["GREEDY", "DFS", "BFS"]
+                        idx = modos.index(algoritmo_actual)
+                        algoritmo_actual = modos[(idx + 1) % len(modos)]
+                        btn_algoritmo.actualizar_texto(f"Modo: {algoritmo_actual}")
+
                     elif btn_resolver.es_clic(pos_mouse):
-                        mensaje = "IA Pensando..."
+                        mensaje = f"Ejecutando {algoritmo_actual} en Haskell..."
                         geo = calcular_geometria(pantalla, len(estado_juego))
                         dibujar_juego(
                             pantalla,
@@ -445,25 +476,37 @@ def main():
                             geo,
                             btn_resolver,
                             btn_menu,
+                            btn_algoritmo,
                             mensaje,
                             fuentes,
                         )
                         pygame.display.flip()
 
+                        start_time = time.time()
+                        # Enviamos el algoritmo seleccionado
                         res = llamar_haskell(
                             {
                                 "accion": "resolver",
                                 "estado": estado_juego,
                                 "indiceDesde": None,
                                 "indiceHacia": None,
+                                "algoritmo": algoritmo_actual,
                             }
                         )
+                        end_time = time.time()
+
                         if res and res.get("solucion"):
                             cola_solucion = res["solucion"]
-                            mensaje = f"Solución encontrada: {len(cola_solucion)} pasos"
+                            nodos = res.get("nodosVisitados", "?")
+                            pasos = len(cola_solucion)
+                            tiempo = round(end_time - start_time, 4)
+                            mensaje = f"Solución: {pasos} pasos | Nodos: {nodos} | Tiempo: {tiempo}s"
                         else:
-                            mensaje = "Sin solución (intenta mover algo)"
+                            nodos = res.get("nodosVisitados", "?")
+                            mensaje = f"Falló o límite excedido (Nodos: {nodos})"
+
                     else:
+                        # Lógica de juego manual
                         geo = calcular_geometria(pantalla, len(estado_juego))
                         tubo_clic = get_tubo_clic(geo, pos_mouse, len(estado_juego))
                         if tubo_clic is not None:
@@ -479,12 +522,13 @@ def main():
                                         "estado": estado_juego,
                                         "indiceDesde": seleccionado,
                                         "indiceHacia": tubo_clic,
+                                        "algoritmo": algoritmo_actual,
                                     }
                                 )
                                 if res and res["nuevoEstado"]:
                                     estado_futuro = res["nuevoEstado"]
                                     victoria_pendiente = res["esVictoria"]
-                                    # Lógica de animación
+
                                     origen, destino = seleccionado, tubo_clic
                                     num_movidas = len(estado_juego[origen]) - len(
                                         estado_futuro[origen]
@@ -501,7 +545,7 @@ def main():
                                             + num_movidas
                                             - 1
                                             - k,
-                                        )  # Ajuste visual origen
+                                        )
                                         pos_fin = get_pos_bola(
                                             geo, destino, len(estado_juego[destino]) + k
                                         )
@@ -517,37 +561,36 @@ def main():
         # UPDATE LOOP
         if estado_app == "JUEGO":
             if cola_solucion and not animaciones:
-                # Auto-play del solver
+                # Extraer siguiente paso de la solución
                 origen, destino = cola_solucion.pop(0)
-                # Simular clic lógico
+
+                # Ejecutar movimiento visualmente
                 res = llamar_haskell(
                     {
                         "accion": "mover",
                         "estado": estado_juego,
                         "indiceDesde": origen,
                         "indiceHacia": destino,
+                        "algoritmo": algoritmo_actual,
                     }
                 )
                 if res and res["nuevoEstado"]:
                     estado_futuro = res["nuevoEstado"]
                     victoria_pendiente = res["esVictoria"]
+
                     num_movidas = len(estado_juego[origen]) - len(estado_futuro[origen])
                     color_movido = estado_juego[origen][0]
-                    estado_juego[origen] = estado_juego[origen][
-                        num_movidas:
-                    ]  # Quitar visualmente origen
+                    estado_juego[origen] = estado_juego[origen][num_movidas:]
+
                     for k in range(num_movidas):
-                        # Recalculamos geometria por si cambio el tamaño ventana
                         geo = calcular_geometria(pantalla, len(estado_juego))
-                        # OJO: Para la animación, las bolas 'borradas' estaban arriba.
-                        # Altura origen: lo que quedó + las que se fueron - 1 - k
                         h_origen = len(estado_juego[origen]) + num_movidas - 1 - k
                         h_destino = len(estado_juego[destino]) + k
                         pos_ini = get_pos_bola(geo, origen, h_origen)
                         pos_fin = get_pos_bola(geo, destino, h_destino)
                         animaciones.append(
                             AnimacionBola(
-                                color_movido, pos_ini, pos_fin, duracion_seg=0.2
+                                color_movido, pos_ini, pos_fin, duracion_seg=0.6
                             )
                         )
 
@@ -579,6 +622,7 @@ def main():
                 geo,
                 btn_resolver,
                 btn_menu,
+                btn_algoritmo,
                 mensaje,
                 fuentes,
             )
