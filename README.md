@@ -1,5 +1,7 @@
 # Ball Sort Puzzle (Haskell + Python)
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/jesshdzz/Ball-sort-puzzle)
+
 Este es un proyecto universitario para la materia de **Programación Funcional**, cuyo objetivo principal es presentar una arquitectura de sistema híbrida donde **Haskell** actúa como el "cerebro" lógico y **Python** actúa como la interfaz de usuario.
 
 El proyecto es una implementación del popular juego "Ball Sort Puzzle", con un menú de dificultad y un solver de IA capaz de resolver todos los niveles.
