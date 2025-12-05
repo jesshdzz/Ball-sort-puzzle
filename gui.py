@@ -4,13 +4,38 @@ import json
 import subprocess
 import random
 import time
+import os
 
 # --- CONFIGURACIÓN INICIAL DE LA VENTANA ---
 ANCHO_INICIAL = 1280
 ALTO_INICIAL = 720
-
-# --- EL PUENTE (HASKELL) ---
 EXE_HASKELL = "./ball-sort-puzzle-exe"
+
+
+# --- GESTOR DE SONIDO ---
+class GestorSonido:
+    def __init__(self):
+        self.sonidos = {}
+        self.activo = True
+        self.cargar_sonido("select", "assets/select.mp3")
+        self.cargar_sonido("move", "assets/move.mp3")
+        self.cargar_sonido("badmove", "assets/bad_move.mp3")
+        self.cargar_sonido("error", "assets/error.mp3")
+        self.cargar_sonido("win", "assets/win.mp3")
+
+    def cargar_sonido(self, nombre, ruta):
+        if os.path.exists(ruta):
+            try:
+                self.sonidos[nombre] = pygame.mixer.Sound(ruta)
+                self.sonidos[nombre].set_volume(0.5)
+            except:
+                print(f"Error al cargar el sonido: {ruta}")
+        else:
+            print(f"Archivo de sonido no encontrado: {ruta}")
+
+    def play(self, nombre):
+        if self.activo and nombre in self.sonidos:
+            self.sonidos[nombre].play()
 
 
 def llamar_haskell(payload):
@@ -143,9 +168,63 @@ class AnimacionBola:
 
     def dibujar(self, pantalla, radio_bola):
         x, y = self.get_posicion()
-        color_rgb = COLORES["PALETA_BOLAS"].get(self.color, (255, 255, 255))
-        pygame.draw.circle(pantalla, COLORES["SOMBRA_BOLA"], (x + 3, y + 3), radio_bola)
-        pygame.draw.circle(pantalla, color_rgb, (x, y), radio_bola)
+        dibujar_bola_con_figura(pantalla, self.color, x, y, radio_bola)
+        # color_rgb = COLORES["PALETA_BOLAS"].get(self.color, (255, 255, 255))
+        # pygame.draw.circle(pantalla, COLORES["SOMBRA_BOLA"], (x + 3, y + 3), radio_bola)
+        # pygame.draw.circle(pantalla, color_rgb, (x, y), radio_bola)
+        #
+
+
+# --- DIBUJO DE BOLAS ACCESIBLES ---
+
+
+def dibujar_bola_con_figura(pantalla, color_nombre, x, y, radio):
+    # 1. Dibujar Bola Base
+    color_rgb = COLORES["PALETA_BOLAS"].get(color_nombre, (255, 255, 255))
+    pygame.draw.circle(pantalla, COLORES["SOMBRA_BOLA"], (x + 3, y + 3), radio)
+    pygame.draw.circle(pantalla, color_rgb, (x, y), radio)
+
+    # 2. Dibujar Patrón para Daltonismo (Contraste)
+    # Color del símbolo: Negro para colores claros, Blanco para oscuros
+    color_simbolo = (
+        (20, 20, 20)
+        if color_nombre in ["Amarillo", "Cyan", "Rosa", "Naranja"]
+        else (230, 230, 230)
+    )
+    grosor = 3
+    r = radio // 2  # Tamaño relativo del símbolo
+
+    if color_nombre == "Rojo":  # CUADRADO
+        pygame.draw.rect(pantalla, color_simbolo, (x - r, y - r, r * 2, r * 2), grosor)
+
+    elif color_nombre == "Verde":  # TRIÁNGULO
+        puntos = [(x, y - r), (x - r, y + r), (x + r, y + r)]
+        pygame.draw.polygon(pantalla, color_simbolo, puntos, grosor)
+
+    elif color_nombre == "Azul":  # CÍRCULO (ANILLO)
+        pygame.draw.circle(pantalla, color_simbolo, (x, y), r, grosor)
+
+    elif color_nombre == "Amarillo":  # CRUZ (+)
+        pygame.draw.line(pantalla, color_simbolo, (x, y - r), (x, y + r), grosor)
+        pygame.draw.line(pantalla, color_simbolo, (x - r, y), (x + r, y), grosor)
+
+    elif color_nombre == "Morado":  # ROMBO
+        puntos = [(x, y - r), (x + r, y), (x, y + r), (x - r, y)]
+        pygame.draw.polygon(pantalla, color_simbolo, puntos, grosor)
+
+    elif color_nombre == "Naranja":  # X
+        pygame.draw.line(
+            pantalla, color_simbolo, (x - r, y - r), (x + r, y + r), grosor
+        )
+        pygame.draw.line(
+            pantalla, color_simbolo, (x + r, y - r), (x - r, y + r), grosor
+        )
+
+    elif color_nombre == "Cyan":  # LÍNEA HORIZONTAL
+        pygame.draw.line(pantalla, color_simbolo, (x - r, y), (x + r, y), grosor + 1)
+
+    elif color_nombre == "Rosa":  # PUNTO CENTRAL
+        pygame.draw.circle(pantalla, color_simbolo, (x, y), r // 2)
 
 
 # --- LÓGICA DE PANTALLA ---
@@ -222,9 +301,7 @@ def dibujar_menu(pantalla, botones_menu, btn_ayuda, fuentes):
     dibujar_texto_centrado(
         pantalla, "BALL SORT PUZZLE", fuentes["titulo"], 80, COLORES["TEXTO_TITULO"]
     )
-    dibujar_texto_centrado(
-        pantalla, "Haskell Core + Python UI", fuentes["subtitulo"], 150
-    )
+    dibujar_texto_centrado(pantalla, "Haskell + Python", fuentes["subtitulo"], 150)
 
     y_base = 250
     for i, (key, boton) in enumerate(botones_menu.items()):
@@ -329,15 +406,16 @@ def dibujar_juego(
 
         for k, color in enumerate(tubo):
             cx, cy = get_pos_bola(geo, i, len(tubo) - 1 - k)
-            pygame.draw.circle(
-                pantalla, COLORES["SOMBRA_BOLA"], (cx + 3, cy + 3), geo["radio_bola"]
-            )
-            pygame.draw.circle(
-                pantalla,
-                COLORES["PALETA_BOLAS"].get(color, (255, 255, 255)),
-                (cx, cy),
-                geo["radio_bola"],
-            )
+            dibujar_bola_con_figura(pantalla, color, cx, cy, geo["radio_bola"])
+            # pygame.draw.circle(
+            #     pantalla, COLORES["SOMBRA_BOLA"], (cx + 3, cy + 3), geo["radio_bola"]
+            # )
+            # pygame.draw.circle(
+            #     pantalla,
+            #     COLORES["PALETA_BOLAS"].get(color, (255, 255, 255)),
+            #     (cx, cy),
+            #     geo["radio_bola"],
+            # )
 
     for anim in animaciones:
         anim.dibujar(pantalla, geo["radio_bola"])
@@ -369,6 +447,7 @@ def dibujar_victoria(pantalla, btn_menu_victoria, fuentes):
 def main():
     pygame.init()
     pygame.font.init()
+    pygame.mixer.pre_init(44100, -16, 2, 512)
     pantalla = pygame.display.set_mode((ANCHO_INICIAL, ALTO_INICIAL), pygame.RESIZABLE)
     pygame.display.set_caption("Ball Sort - Proyecto Educativo Haskell & Python")
     reloj = pygame.time.Clock()
@@ -379,6 +458,8 @@ def main():
         "normal": pygame.font.SysFont("Arial", 20),
         "boton": pygame.font.SysFont("Arial", 18, bold=True),
     }
+
+    sonido = GestorSonido()
 
     # Botones
     botones_menu = {key: Boton(key, fuentes["boton"]) for key in DIFICULTADES.keys()}
@@ -430,6 +511,7 @@ def main():
                 if estado_app == "MENU":
                     if btn_ayuda.es_clic(pos_mouse):
                         estado_app = "AYUDA"
+                        sonido.play("select")
                     else:
                         for key, boton in botones_menu.items():
                             if boton.es_clic(pos_mouse):
@@ -445,18 +527,22 @@ def main():
                                     "¡Suerte!",
                                     "JUEGO",
                                 )
+                                sonido.play("select")
 
                 elif estado_app == "AYUDA":
                     if btn_volver_ayuda.es_clic(pos_mouse):
                         estado_app = "MENU"
+                        sonido.play("select")
 
                 elif estado_app == "GANASTE":
                     if btn_menu_victoria.es_clic(pos_mouse):
                         estado_app = "MENU"
+                        sonido.play("select")
 
                 elif estado_app == "JUEGO" and not animaciones:
                     if btn_menu.es_clic(pos_mouse):
                         estado_app = "MENU"
+                        sonido.play("select")
 
                     # LOGICA CAMBIO ALGORITMO
                     elif btn_algoritmo.es_clic(pos_mouse):
@@ -464,9 +550,11 @@ def main():
                         idx = modos.index(algoritmo_actual)
                         algoritmo_actual = modos[(idx + 1) % len(modos)]
                         btn_algoritmo.actualizar_texto(f"Modo: {algoritmo_actual}")
+                        sonido.play("select")
 
                     elif btn_resolver.es_clic(pos_mouse):
                         mensaje = f"Ejecutando {algoritmo_actual} en Haskell..."
+                        sonido.play("select")
                         geo = calcular_geometria(pantalla, len(estado_juego))
                         dibujar_juego(
                             pantalla,
@@ -501,9 +589,11 @@ def main():
                             pasos = len(cola_solucion)
                             tiempo = round(end_time - start_time, 4)
                             mensaje = f"Solución: {pasos} pasos | Nodos: {nodos} | Tiempo: {tiempo}s"
+                            # sonido.play("win")
                         else:
                             nodos = res.get("nodosVisitados", "?")
                             mensaje = f"Falló o límite excedido (Nodos: {nodos})"
+                            sonido.play("error")
 
                     else:
                         # Lógica de juego manual
@@ -513,8 +603,10 @@ def main():
                             if seleccionado is None:
                                 if estado_juego[tubo_clic]:
                                     seleccionado = tubo_clic
+                                    sonido.play("select")
                             elif seleccionado == tubo_clic:
                                 seleccionado = None
+                                sonido.play("select")
                             else:
                                 res = llamar_haskell(
                                     {
@@ -555,8 +647,10 @@ def main():
                                             )
                                         )
                                     seleccionado = None
+                                    sonido.play("move")
                                 else:
                                     mensaje, seleccionado = "Movimiento inválido", None
+                                    sonido.play("badmove")
 
         # UPDATE LOOP
         if estado_app == "JUEGO":
@@ -593,6 +687,7 @@ def main():
                                 color_movido, pos_ini, pos_fin, duracion_seg=0.6
                             )
                         )
+                    sonido.play("move")
 
             if animaciones:
                 todo_ok = True
@@ -604,6 +699,7 @@ def main():
                     animaciones, estado_juego, estado_futuro = [], estado_futuro, None
                     if victoria_pendiente:
                         estado_app, victoria_pendiente = "GANASTE", False
+                        sonido.play("win")
 
         # DRAW LOOP
         if estado_app == "MENU":
